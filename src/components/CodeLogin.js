@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 
-// 🌐 URL de ton backend Render
 const API_URL = 'https://ley-tv.onrender.com';
 
 function CodeLogin({ onLogin }) {
@@ -37,7 +36,7 @@ function CodeLogin({ onLogin }) {
         setError(data.error || 'Code invalide');
       }
     } catch (err) {
-      setError('Erreur de connexion au serveur');
+      setError('Erreur de connexion');
     } finally {
       setLoading(false);
     }
@@ -58,54 +57,25 @@ function CodeLogin({ onLogin }) {
         boxShadow: '0 0 10px rgba(0,0,0,0.1)',
         width: '300px'
       }}>
-        <h2 style={{ textAlign: 'center', marginBottom: '20px' }}>🔐 Connexion Ley TV</h2>
-        
+        <h2 style={{ textAlign: 'center' }}>🔐 Connexion</h2>
         <form onSubmit={handleSubmit}>
           <input
             type="text"
             value={code}
             onChange={(e) => setCode(e.target.value.toUpperCase())}
-            placeholder="Entrez votre code"
-            style={{
-              width: '100%',
-              padding: '10px',
-              marginBottom: '10px',
-              border: '1px solid #ddd',
-              borderRadius: '5px',
-              fontSize: '16px',
-              textTransform: 'uppercase'
-            }}
+            placeholder="Code"
+            style={{ width: '100%', padding: '10px', marginBottom: '10px' }}
             maxLength="8"
           />
-          
-          {error && (
-            <p style={{ color: 'red', fontSize: '14px', marginBottom: '10px' }}>
-              {error}
-            </p>
-          )}
-          
+          {error && <p style={{ color: 'red' }}>{error}</p>}
           <button
             type="submit"
             disabled={loading}
-            style={{
-              width: '100%',
-              padding: '12px',
-              backgroundColor: '#007bff',
-              color: 'white',
-              border: 'none',
-              borderRadius: '5px',
-              fontSize: '16px',
-              cursor: 'pointer',
-              opacity: loading ? 0.7 : 1
-            }}
+            style={{ width: '100%', padding: '12px', backgroundColor: '#007bff', color: 'white' }}
           >
-            {loading ? 'Vérification...' : 'Se connecter'}
+            {loading ? '...' : 'Se connecter'}
           </button>
         </form>
-        
-        <p style={{ textAlign: 'center', marginTop: '20px', fontSize: '12px', color: '#999' }}>
-          Version gratuite 1 mois
-        </p>
       </div>
     </div>
   );
