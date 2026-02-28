@@ -10,6 +10,7 @@ function MovieGrid() {
   const [totalPages, setTotalPages] = useState(1);
   const [selectedMovie, setSelectedMovie] = useState(null);
   const [streamUrl, setStreamUrl] = useState('');
+  const [loadingStream, setLoadingStream] = useState(false);
 
   const fetchItems = useCallback(async () => {
     setLoading(true);
@@ -17,7 +18,6 @@ function MovieGrid() {
       const response = await fetch(`${API_URL}/api/${category}/popular?page=${page}`);
       const data = await response.json();
       
-      // Gestion des différents formats de réponse
       if (data.films) {
         setItems(data.films);
         setTotalPages(data.totalPages || 1);
@@ -25,7 +25,6 @@ function MovieGrid() {
         setItems(data);
         setTotalPages(1);
       } else {
-        console.log('Format inattendu:', data);
         setItems([]);
       }
     } catch (error) {
@@ -44,18 +43,55 @@ function MovieGrid() {
     try {
       setSelectedMovie(movie);
       setStreamUrl('');
+      setLoadingStream(true);
       
-      const response = await fetch(`${API_URL}/api/movies/${movie.id}/stream-clean`);
-      const data = await response.json();
+      // Liste de toutes les sources possibles
+      const sources = [
+        `${API_URL}/api/movies/${movie.id}/stream-clean`,
+        `${API_URL}/api/movies/${movie.id}/stream`,
+        `https://vidsrc.to/embed/movie/${movie.id}`,
+        `https://vidsrc.xyz/embed/movie/${movie.id}`,
+        `https://2embed.cc/embed/${movie.id}`,
+        `https://embed.su/embed/movie/${movie.id}`,
+        `https://vidlink.xyz/movie/${movie.id}`,
+        `https://moviesapi.club/movie/${movie.id}`,
+        `https://autoembed.cc/embed/movie/${movie.id}`,
+        `https://multiembed.mov/?video_id=${movie.id}&tmdb=1`
+      ];
       
-      if (data.embed) {
-        setStreamUrl(data.embed);
-      } else {
-        alert('Lien de streaming non disponible');
+      let found = false;
+      for (const source of sources) {
+        try {
+          console.log('Tentative:', source);
+          
+          if (source.startsWith(API_URL)) {
+            // Appel à notre backend
+            const response = await fetch(source);
+            const data = await response.json();
+            if (data.embed) {
+              setStreamUrl(data.embed);
+              found = true;
+              break;
+            }
+          } else {
+            // Source directe (iframe)
+            setStreamUrl(source);
+            found = true;
+            break;
+          }
+        } catch (e) {
+          console.log('Source échouée:', source);
+        }
+      }
+      
+      if (!found) {
+        alert('Aucune source disponible pour ce film. Essaie un autre film !');
       }
     } catch (error) {
       console.error('Erreur lecture:', error);
       alert('Impossible de lire ce film');
+    } finally {
+      setLoadingStream(false);
     }
   };
 
@@ -135,10 +171,7 @@ function MovieGrid() {
                           borderRadius: '8px',
                           overflow: 'hidden',
                           cursor: 'pointer',
-                          transition: 'transform 0.2s',
-                          ':hover': {
-                            transform: 'scale(1.05)'
-                          }
+                          transition: 'transform 0.2s'
                         }}
                       >
                         <img 
@@ -221,7 +254,9 @@ function MovieGrid() {
           
           <h2>{selectedMovie.title}</h2>
           
-          {streamUrl ? (
+          {loadingStream ? (
+            <p>🔍 Recherche d'une source de streaming...</p>
+          ) : streamUrl ? (
             <iframe
               src={streamUrl}
               width="100%"
@@ -231,7 +266,7 @@ function MovieGrid() {
               title={selectedMovie.title}
             />
           ) : (
-            <p>Chargement du lecteur...</p>
+            <p>Aucune source disponible. Essaie un autre film.</p>
           )}
         </div>
       )}
