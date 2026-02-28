@@ -58,24 +58,55 @@ function MovieGrid() {
       setStreamUrl('');
       setLoadingStream(true);
       
-      // Afficher un message sur la langue
       const langMsg = movie.original_language === 'fr' 
-        ? '🇫🇷 Film français (VO française)'
+        ? '🇫🇷 Film français' 
         : movie.original_language === 'en'
-        ? '🇬🇧 Film anglais (VO anglaise)'
-        : `${getLanguageName(movie.original_language)} (VO)`;
+        ? '🇬🇧 Film anglais'
+        : `${getLanguageName(movie.original_language)}`;
       
-      // On peut l'afficher dans la console ou dans l'interface
       console.log('Langue:', langMsg);
       
-      const response = await fetch(`${API_URL}/api/movies/${movie.id}/stream`);
-      const data = await response.json();
+      // Liste de TOUTES les sources possibles
+      const sourcesToTry = [
+        `https://vidlink.xyz/movie/${movie.id}`,
+        `https://embed.su/embed/movie/${movie.id}`,
+        `https://vidsrc.xyz/embed/movie/${movie.id}`,
+        `https://vidsrc.to/embed/movie/${movie.id}`,
+        `https://2embed.cc/embed/${movie.id}`,
+        `https://moviesapi.club/movie/${movie.id}`,
+        `https://autoembed.cc/embed/movie/${movie.id}`,
+        `https://multiembed.mov/?video_id=${movie.id}&tmdb=1`,
+        `https://player.smashy.stream/movie/${movie.id}`,
+        `https://sup-proxy.zapto.org/embed/movie/${movie.id}`,
+        `https://vidsrc.net/embed/movie/${movie.id}`
+      ];
       
-      if (data.embed) {
-        setStreamUrl(data.embed);
-      } else {
-        alert('Lien de streaming non disponible');
+      let found = false;
+      
+      for (const source of sourcesToTry) {
+        try {
+          console.log('Tentative:', source);
+          setStreamUrl(source);
+          found = true;
+          break;
+        } catch (e) {
+          console.log('Source échouée');
+        }
       }
+      
+      if (!found) {
+        const response = await fetch(`${API_URL}/api/movies/${movie.id}/stream`);
+        const data = await response.json();
+        if (data.embed) {
+          setStreamUrl(data.embed);
+          found = true;
+        }
+      }
+      
+      if (!found) {
+        alert('Aucune source disponible. Essaie un autre film !');
+      }
+      
     } catch (error) {
       console.error('Erreur lecture:', error);
       alert('Impossible de lire ce film');
@@ -139,8 +170,7 @@ function MovieGrid() {
                           border: '1px solid #ddd', 
                           borderRadius: '8px',
                           overflow: 'hidden',
-                          cursor: 'pointer',
-                          transition: 'transform 0.2s'
+                          cursor: 'pointer'
                         }}
                       >
                         <img 
@@ -151,21 +181,17 @@ function MovieGrid() {
                             height: '250px', 
                             objectFit: 'cover' 
                           }} 
-                          onError={(e) => {
-                            e.target.src = 'https://via.placeholder.com/200x250?text=Image+non+disponible';
-                          }}
                         />
                         <div style={{ padding: '10px' }}>
                           <h3 style={{ fontSize: '16px', margin: 0 }}>{item.title}</h3>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '5px' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '5px' }}>
                             {item.year && <span style={{ color: '#666', fontSize: '12px' }}>{item.year}</span>}
                             {item.original_language && (
                               <span style={{ 
                                 backgroundColor: '#f0f0f0', 
                                 padding: '2px 6px', 
                                 borderRadius: '4px',
-                                fontSize: '11px',
-                                fontWeight: 'bold'
+                                fontSize: '11px'
                               }}>
                                 {getLanguageName(item.original_language)}
                               </span>
@@ -190,28 +216,14 @@ function MovieGrid() {
         </>
       ) : (
         <div>
-          <button 
-            onClick={closePlayer}
-            style={{
-              padding: '10px 20px',
-              marginBottom: '20px',
-              backgroundColor: '#6c757d',
-              color: 'white',
-              border: 'none',
-              borderRadius: '4px',
-              cursor: 'pointer'
-            }}
-          >
-            ← Retour
-          </button>
-          
+          <button onClick={closePlayer} style={{ padding: '10px 20px', marginBottom: '20px' }}>← Retour</button>
           <h2>{selectedMovie.title}</h2>
           <p style={{ marginBottom: '20px', color: '#666' }}>
             {getLanguageName(selectedMovie.original_language)} • {selectedMovie.year || 'Année inconnue'}
           </p>
           
           {loadingStream ? (
-            <p>🔍 Chargement du lecteur...</p>
+            <p>🔍 Recherche d'une source...</p>
           ) : streamUrl ? (
             <iframe
               src={streamUrl}
