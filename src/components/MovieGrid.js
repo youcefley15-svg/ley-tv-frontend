@@ -2,7 +2,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 
 const API_URL = 'https://ley-tv.onrender.com';
 
-function MovieGrid() {
+function MovieGrid({ hasPub = false, userType = 'premium' }) {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [category, setCategory] = useState('movies');
@@ -19,7 +19,11 @@ function MovieGrid() {
       'ar': '🇸🇦 Arabe',
       'ko': '🇰🇷 Coréen',
       'ja': '🇯🇵 Japonais',
-      'zh': '🇨🇳 Chinois'
+      'zh': '🇨🇳 Chinois',
+      'hi': '🇮🇳 Hindi',
+      'de': '🇩🇪 Allemand',
+      'es': '🇪🇸 Espagnol',
+      'it': '🇮🇹 Italien'
     };
     return languages[lang] || `🌐 ${lang.toUpperCase()}`;
   };
@@ -33,9 +37,16 @@ function MovieGrid() {
       if (data.films) {
         setItems(data.films);
         setTotalPages(data.totalPages || 1);
+      } else if (Array.isArray(data)) {
+        setItems(data);
+        setTotalPages(1);
+      } else {
+        console.log('Format inattendu:', data);
+        setItems([]);
       }
     } catch (error) {
       console.error('Erreur chargement:', error);
+      setItems([]);
     } finally {
       setLoading(false);
     }
@@ -59,6 +70,9 @@ function MovieGrid() {
       if (data.embed) {
         console.log('✅ Source trouvée');
         setStreamUrl(data.embed);
+      } else if (data.sources && data.sources.length > 0) {
+        console.log('✅ Source alternative');
+        setStreamUrl(data.sources[0]);
       } else {
         console.log('⚠️ Source de secours');
         setStreamUrl(`https://vidsrc.to/embed/movie/${movie.id}`);
@@ -84,7 +98,8 @@ function MovieGrid() {
     color: category === cat ? 'white' : 'black',
     border: 'none',
     borderRadius: '4px',
-    cursor: 'pointer'
+    cursor: 'pointer',
+    fontSize: '14px'
   });
 
   return (
@@ -92,14 +107,34 @@ function MovieGrid() {
       {!selectedMovie ? (
         <>
           <div style={{ marginBottom: '20px' }}>
-            <button onClick={() => { setCategory('movies'); setPage(1); }} style={getButtonStyle('movies')}>🎬 Films</button>
-            <button onClick={() => { setCategory('anime'); setPage(1); }} style={getButtonStyle('anime')}>🎌 Animes</button>
-            <button onClick={() => { setCategory('dramas'); setPage(1); }} style={getButtonStyle('dramas')}>📺 Dramas</button>
-            <button onClick={() => { setCategory('arabic'); setPage(1); }} style={getButtonStyle('arabic')}>🌍 Arabes</button>
+            <button 
+              onClick={() => { setCategory('movies'); setPage(1); }} 
+              style={getButtonStyle('movies')}
+            >
+              🎬 Films
+            </button>
+            <button 
+              onClick={() => { setCategory('anime'); setPage(1); }} 
+              style={getButtonStyle('anime')}
+            >
+              🎌 Animes
+            </button>
+            <button 
+              onClick={() => { setCategory('dramas'); setPage(1); }} 
+              style={getButtonStyle('dramas')}
+            >
+              📺 Dramas
+            </button>
+            <button 
+              onClick={() => { setCategory('arabic'); setPage(1); }} 
+              style={getButtonStyle('arabic')}
+            >
+              🌍 Arabes
+            </button>
           </div>
 
           {loading ? (
-            <div>⏳ Chargement...</div>
+            <div style={{ textAlign: 'center', padding: '50px' }}>⏳ Chargement...</div>
           ) : (
             <>
               <h2>
@@ -109,62 +144,139 @@ function MovieGrid() {
                 {category === 'arabic' && 'Films arabes populaires'}
               </h2>
               
-              <div style={{ 
-                display: 'grid', 
-                gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', 
-                gap: '20px' 
-              }}>
-                {items.map(item => (
-                  <div 
-                    key={item.id} 
-                    onClick={() => playMovie(item)}
-                    style={{ 
-                      border: '1px solid #ddd', 
-                      borderRadius: '8px',
-                      overflow: 'hidden',
-                      cursor: 'pointer'
-                    }}
-                  >
-                    <img src={item.image} alt={item.title} style={{ width: '100%', height: '250px' }} />
-                    <div style={{ padding: '10px' }}>
-                      <h3 style={{ fontSize: '16px', margin: 0 }}>{item.title}</h3>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '5px' }}>
-                        {item.year && <span>{item.year}</span>}
-                        {item.original_language && <span>{getLanguageName(item.original_language)}</span>}
+              {items.length === 0 ? (
+                <p>Aucun contenu trouvé</p>
+              ) : (
+                <>
+                  <div style={{ 
+                    display: 'grid', 
+                    gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', 
+                    gap: '20px' 
+                  }}>
+                    {items.map(item => (
+                      <div 
+                        key={item.id} 
+                        onClick={() => playMovie(item)}
+                        style={{ 
+                          border: '1px solid #ddd', 
+                          borderRadius: '8px',
+                          overflow: 'hidden',
+                          cursor: 'pointer',
+                          transition: 'transform 0.2s',
+                          ':hover': {
+                            transform: 'scale(1.05)'
+                          }
+                        }}
+                      >
+                        <img 
+                          src={item.image} 
+                          alt={item.title} 
+                          style={{ 
+                            width: '100%', 
+                            height: '250px', 
+                            objectFit: 'cover' 
+                          }} 
+                          onError={(e) => {
+                            e.target.src = 'https://via.placeholder.com/200x250?text=Image+non+disponible';
+                          }}
+                        />
+                        <div style={{ padding: '10px' }}>
+                          <h3 style={{ fontSize: '16px', margin: 0 }}>{item.title}</h3>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '5px' }}>
+                            {item.year && <span style={{ color: '#666', fontSize: '12px' }}>{item.year}</span>}
+                            {item.original_language && (
+                              <span style={{ 
+                                backgroundColor: '#f0f0f0', 
+                                padding: '2px 6px', 
+                                borderRadius: '4px',
+                                fontSize: '11px',
+                                fontWeight: 'bold'
+                              }}>
+                                {getLanguageName(item.original_language)}
+                              </span>
+                            )}
+                          </div>
+                        </div>
                       </div>
-                    </div>
+                    ))}
                   </div>
-                ))}
-              </div>
-              
-              {totalPages > 1 && (
-                <div style={{ marginTop: '30px', textAlign: 'center' }}>
-                  <button onClick={() => setPage(p => Math.max(1, p-1))} disabled={page === 1}>← Précédent</button>
-                  <span> Page {page} / {totalPages} </span>
-                  <button onClick={() => setPage(p => Math.min(totalPages, p+1))} disabled={page === totalPages}>Suivant →</button>
-                </div>
+                  
+                  {totalPages > 1 && (
+                    <div style={{ marginTop: '30px', textAlign: 'center' }}>
+                      <button 
+                        onClick={() => setPage(p => Math.max(1, p-1))}
+                        disabled={page === 1}
+                        style={{
+                          padding: '8px 16px',
+                          marginRight: '10px',
+                          backgroundColor: '#007bff',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: '4px',
+                          cursor: page === 1 ? 'not-allowed' : 'pointer',
+                          opacity: page === 1 ? 0.5 : 1
+                        }}
+                      >
+                        ← Précédent
+                      </button>
+                      <span style={{ margin: '0 15px' }}>Page {page} / {totalPages}</span>
+                      <button 
+                        onClick={() => setPage(p => Math.min(totalPages, p+1))}
+                        disabled={page === totalPages}
+                        style={{
+                          padding: '8px 16px',
+                          backgroundColor: '#007bff',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: '4px',
+                          cursor: page === totalPages ? 'not-allowed' : 'pointer',
+                          opacity: page === totalPages ? 0.5 : 1
+                        }}
+                      >
+                        Suivant →
+                      </button>
+                    </div>
+                  )}
+                </>
               )}
             </>
           )}
         </>
       ) : (
         <div>
-          <button onClick={closePlayer} style={{ padding: '10px 20px', marginBottom: '20px' }}>← Retour</button>
+          <button 
+            onClick={closePlayer}
+            style={{
+              padding: '10px 20px',
+              marginBottom: '20px',
+              backgroundColor: '#6c757d',
+              color: 'white',
+              border: 'none',
+              borderRadius: '4px',
+              cursor: 'pointer'
+            }}
+          >
+            ← Retour aux films
+          </button>
+          
           <h2>{selectedMovie.title}</h2>
+          <p style={{ marginBottom: '20px', color: '#666' }}>
+            {getLanguageName(selectedMovie.original_language)} • {selectedMovie.year || 'Année inconnue'}
+          </p>
           
           {loadingStream ? (
-            <p>Chargement...</p>
+            <p>🔍 Chargement du lecteur...</p>
           ) : streamUrl ? (
             <iframe
               src={streamUrl}
               width="100%"
               height="500"
-              style={{ border: 'none' }}
+              style={{ border: 'none', borderRadius: '8px' }}
               allowFullScreen
               title={selectedMovie.title}
             />
           ) : (
-            <p>Aucune source</p>
+            <p>Aucune source disponible pour ce film</p>
           )}
         </div>
       )}
