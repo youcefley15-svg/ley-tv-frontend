@@ -58,53 +58,13 @@ function MovieGrid() {
       setStreamUrl('');
       setLoadingStream(true);
       
-      const langMsg = movie.original_language === 'fr' 
-        ? '🇫🇷 Film français' 
-        : movie.original_language === 'en'
-        ? '🇬🇧 Film anglais'
-        : `${getLanguageName(movie.original_language)}`;
+      const response = await fetch(`${API_URL}/api/movies/${movie.id}/stream`);
+      const data = await response.json();
       
-      console.log('Langue:', langMsg);
-      
-      // Liste de TOUTES les sources possibles
-      const sourcesToTry = [
-        `https://vidlink.xyz/movie/${movie.id}`,
-        `https://embed.su/embed/movie/${movie.id}`,
-        `https://vidsrc.xyz/embed/movie/${movie.id}`,
-        `https://vidsrc.to/embed/movie/${movie.id}`,
-        `https://2embed.cc/embed/${movie.id}`,
-        `https://moviesapi.club/movie/${movie.id}`,
-        `https://autoembed.cc/embed/movie/${movie.id}`,
-        `https://multiembed.mov/?video_id=${movie.id}&tmdb=1`,
-        `https://player.smashy.stream/movie/${movie.id}`,
-        `https://sup-proxy.zapto.org/embed/movie/${movie.id}`,
-        `https://vidsrc.net/embed/movie/${movie.id}`
-      ];
-      
-      let found = false;
-      
-      for (const source of sourcesToTry) {
-        try {
-          console.log('Tentative:', source);
-          setStreamUrl(source);
-          found = true;
-          break;
-        } catch (e) {
-          console.log('Source échouée');
-        }
-      }
-      
-      if (!found) {
-        const response = await fetch(`${API_URL}/api/movies/${movie.id}/stream`);
-        const data = await response.json();
-        if (data.embed) {
-          setStreamUrl(data.embed);
-          found = true;
-        }
-      }
-      
-      if (!found) {
-        alert('Aucune source disponible. Essaie un autre film !');
+      if (data.embed) {
+        setStreamUrl(data.embed);
+      } else {
+        alert('Aucune source disponible pour ce film');
       }
       
     } catch (error) {
@@ -223,7 +183,7 @@ function MovieGrid() {
           </p>
           
           {loadingStream ? (
-            <p>🔍 Recherche d'une source...</p>
+            <p>⏳ Chargement du lecteur...</p>
           ) : streamUrl ? (
             <iframe
               src={streamUrl}
