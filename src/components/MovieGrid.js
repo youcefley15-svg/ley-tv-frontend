@@ -12,6 +12,22 @@ function MovieGrid() {
   const [streamUrl, setStreamUrl] = useState('');
   const [loadingStream, setLoadingStream] = useState(false);
 
+  const getLanguageName = (lang) => {
+    const languages = {
+      'en': '🇬🇧 Anglais',
+      'fr': '🇫🇷 Français',
+      'ar': '🇸🇦 Arabe',
+      'ko': '🇰🇷 Coréen',
+      'ja': '🇯🇵 Japonais',
+      'zh': '🇨🇳 Chinois',
+      'hi': '🇮🇳 Hindi',
+      'de': '🇩🇪 Allemand',
+      'es': '🇪🇸 Espagnol',
+      'it': '🇮🇹 Italien'
+    };
+    return languages[lang] || `🌐 ${lang.toUpperCase()}`;
+  };
+
   const fetchItems = useCallback(async () => {
     setLoading(true);
     try {
@@ -24,12 +40,9 @@ function MovieGrid() {
       } else if (Array.isArray(data)) {
         setItems(data);
         setTotalPages(1);
-      } else {
-        setItems([]);
       }
     } catch (error) {
       console.error('Erreur chargement:', error);
-      setItems([]);
     } finally {
       setLoading(false);
     }
@@ -45,47 +58,23 @@ function MovieGrid() {
       setStreamUrl('');
       setLoadingStream(true);
       
-      // Liste de toutes les sources possibles
-      const sources = [
-        `${API_URL}/api/movies/${movie.id}/stream-clean`,
-        `${API_URL}/api/movies/${movie.id}/stream`,
-        `https://vidsrc.to/embed/movie/${movie.id}`,
-        `https://vidsrc.xyz/embed/movie/${movie.id}`,
-        `https://2embed.cc/embed/${movie.id}`,
-        `https://embed.su/embed/movie/${movie.id}`,
-        `https://vidlink.xyz/movie/${movie.id}`,
-        `https://moviesapi.club/movie/${movie.id}`,
-        `https://autoembed.cc/embed/movie/${movie.id}`,
-        `https://multiembed.mov/?video_id=${movie.id}&tmdb=1`
-      ];
+      // Afficher un message sur la langue
+      const langMsg = movie.original_language === 'fr' 
+        ? '🇫🇷 Film français (VO française)'
+        : movie.original_language === 'en'
+        ? '🇬🇧 Film anglais (VO anglaise)'
+        : `${getLanguageName(movie.original_language)} (VO)`;
       
-      let found = false;
-      for (const source of sources) {
-        try {
-          console.log('Tentative:', source);
-          
-          if (source.startsWith(API_URL)) {
-            // Appel à notre backend
-            const response = await fetch(source);
-            const data = await response.json();
-            if (data.embed) {
-              setStreamUrl(data.embed);
-              found = true;
-              break;
-            }
-          } else {
-            // Source directe (iframe)
-            setStreamUrl(source);
-            found = true;
-            break;
-          }
-        } catch (e) {
-          console.log('Source échouée:', source);
-        }
-      }
+      // On peut l'afficher dans la console ou dans l'interface
+      console.log('Langue:', langMsg);
       
-      if (!found) {
-        alert('Aucune source disponible pour ce film. Essaie un autre film !');
+      const response = await fetch(`${API_URL}/api/movies/${movie.id}/stream`);
+      const data = await response.json();
+      
+      if (data.embed) {
+        setStreamUrl(data.embed);
+      } else {
+        alert('Lien de streaming non disponible');
       }
     } catch (error) {
       console.error('Erreur lecture:', error);
@@ -116,30 +105,10 @@ function MovieGrid() {
       {!selectedMovie ? (
         <>
           <div style={{ marginBottom: '20px' }}>
-            <button 
-              onClick={() => { setCategory('movies'); setPage(1); }} 
-              style={getButtonStyle('movies')}
-            >
-              🎬 Films
-            </button>
-            <button 
-              onClick={() => { setCategory('anime'); setPage(1); }} 
-              style={getButtonStyle('anime')}
-            >
-              🎌 Animes
-            </button>
-            <button 
-              onClick={() => { setCategory('dramas'); setPage(1); }} 
-              style={getButtonStyle('dramas')}
-            >
-              📺 Dramas
-            </button>
-            <button 
-              onClick={() => { setCategory('arabic'); setPage(1); }} 
-              style={getButtonStyle('arabic')}
-            >
-              🌍 Arabes
-            </button>
+            <button onClick={() => { setCategory('movies'); setPage(1); }} style={getButtonStyle('movies')}>🎬 Films</button>
+            <button onClick={() => { setCategory('anime'); setPage(1); }} style={getButtonStyle('anime')}>🎌 Animes</button>
+            <button onClick={() => { setCategory('dramas'); setPage(1); }} style={getButtonStyle('dramas')}>📺 Dramas</button>
+            <button onClick={() => { setCategory('arabic'); setPage(1); }} style={getButtonStyle('arabic')}>🌍 Arabes</button>
           </div>
 
           {loading ? (
@@ -188,7 +157,20 @@ function MovieGrid() {
                         />
                         <div style={{ padding: '10px' }}>
                           <h3 style={{ fontSize: '16px', margin: 0 }}>{item.title}</h3>
-                          {item.year && <p style={{ margin: '5px 0 0', color: '#666' }}>{item.year}</p>}
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '5px' }}>
+                            {item.year && <span style={{ color: '#666', fontSize: '12px' }}>{item.year}</span>}
+                            {item.original_language && (
+                              <span style={{ 
+                                backgroundColor: '#f0f0f0', 
+                                padding: '2px 6px', 
+                                borderRadius: '4px',
+                                fontSize: '11px',
+                                fontWeight: 'bold'
+                              }}>
+                                {getLanguageName(item.original_language)}
+                              </span>
+                            )}
+                          </div>
                         </div>
                       </div>
                     ))}
@@ -196,38 +178,9 @@ function MovieGrid() {
                   
                   {totalPages > 1 && (
                     <div style={{ marginTop: '30px', textAlign: 'center' }}>
-                      <button 
-                        onClick={() => setPage(p => Math.max(1, p-1))}
-                        disabled={page === 1}
-                        style={{
-                          padding: '8px 16px',
-                          marginRight: '10px',
-                          backgroundColor: '#007bff',
-                          color: 'white',
-                          border: 'none',
-                          borderRadius: '4px',
-                          cursor: page === 1 ? 'not-allowed' : 'pointer',
-                          opacity: page === 1 ? 0.5 : 1
-                        }}
-                      >
-                        ← Précédent
-                      </button>
+                      <button onClick={() => setPage(p => Math.max(1, p-1))} disabled={page === 1}>← Précédent</button>
                       <span style={{ margin: '0 15px' }}>Page {page} / {totalPages}</span>
-                      <button 
-                        onClick={() => setPage(p => Math.min(totalPages, p+1))}
-                        disabled={page === totalPages}
-                        style={{
-                          padding: '8px 16px',
-                          backgroundColor: '#007bff',
-                          color: 'white',
-                          border: 'none',
-                          borderRadius: '4px',
-                          cursor: page === totalPages ? 'not-allowed' : 'pointer',
-                          opacity: page === totalPages ? 0.5 : 1
-                        }}
-                      >
-                        Suivant →
-                      </button>
+                      <button onClick={() => setPage(p => Math.min(totalPages, p+1))} disabled={page === totalPages}>Suivant →</button>
                     </div>
                   )}
                 </>
@@ -249,13 +202,16 @@ function MovieGrid() {
               cursor: 'pointer'
             }}
           >
-            ← Retour aux films
+            ← Retour
           </button>
           
           <h2>{selectedMovie.title}</h2>
+          <p style={{ marginBottom: '20px', color: '#666' }}>
+            {getLanguageName(selectedMovie.original_language)} • {selectedMovie.year || 'Année inconnue'}
+          </p>
           
           {loadingStream ? (
-            <p>🔍 Recherche d'une source de streaming...</p>
+            <p>🔍 Chargement du lecteur...</p>
           ) : streamUrl ? (
             <iframe
               src={streamUrl}
@@ -266,7 +222,7 @@ function MovieGrid() {
               title={selectedMovie.title}
             />
           ) : (
-            <p>Aucune source disponible. Essaie un autre film.</p>
+            <p>Aucune source disponible</p>
           )}
         </div>
       )}
