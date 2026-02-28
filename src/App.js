@@ -1,50 +1,25 @@
-import React, { useState, useEffect } from 'react';
-import CodeLogin from './components/CodeLogin';
+import React from 'react';
 import MovieGrid from './components/MovieGrid';
 
 function App() {
-  const [auth, setAuth] = useState(false);
-  const [type, setType] = useState('gratuit');
-  const [pub, setPub] = useState(true);
-  const [load, setLoad] = useState(true);
-
-  useEffect(() => {
-    const code = localStorage.getItem('code');
-    const id = localStorage.getItem('id');
-    if (code && id) {
-      setAuth(true);
-      setType(localStorage.getItem('type') || 'gratuit');
-      setPub(localStorage.getItem('pub') !== 'false');
-    }
-    setLoad(false);
-  }, []);
-
-  const login = (d) => {
-    setAuth(true);
-    setType(d.type);
-    setPub(d.has_pub);
-  };
-
-  const logout = () => {
-    localStorage.clear();
-    setAuth(false);
-  };
-
-  if (load) return <div>Chargement...</div>;
-
   return (
     <div>
-      {!auth ? (
-        <CodeLogin onLogin={login} />
-      ) : (
+      <div style={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        padding: '10px 20px',
+        backgroundColor: '#f8f9fa',
+        borderBottom: '1px solid #ddd'
+      }}>
         <div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', padding: 10 }}>
-            <span>Ley TV - {type} {pub ? '(pubs)' : '(sans pubs)'}</span>
-            <button onClick={logout}>Déconnexion</button>
-          </div>
-          <MovieGrid hasPub={pub} />
+          <strong>🎬 Ley TV</strong>
+          <span style={{ marginLeft: '10px', fontSize: '12px', color: '#666' }}>
+            ⭐ Mode Test (sans code)
+          </span>
         </div>
-      )}
+      </div>
+      <MovieGrid hasPub={false} userType="premium" />
     </div>
   );
 }
