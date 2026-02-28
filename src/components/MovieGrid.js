@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 
 // 🌐 URL de ton backend Render
 const API_URL = 'https://ley-tv.onrender.com';
@@ -8,11 +8,7 @@ function MovieGrid({ hasPub, userType }) {
   const [loading, setLoading] = useState(true);
   const [category, setCategory] = useState('movies'); // 'movies', 'anime', 'dramas'
 
-  useEffect(() => {
-    fetchItems();
-  }, [category]);
-
-  const fetchItems = async () => {
+  const fetchItems = useCallback(async () => {
     setLoading(true);
     try {
       let url = '';
@@ -32,7 +28,11 @@ function MovieGrid({ hasPub, userType }) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [category]);
+
+  useEffect(() => {
+    fetchItems();
+  }, [fetchItems]);
 
   const getButtonStyle = (cat) => ({
     padding: '10px 20px',

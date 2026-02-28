@@ -2,9 +2,6 @@ import React, { useState, useEffect } from 'react';
 import CodeLogin from './components/CodeLogin';
 import MovieGrid from './components/MovieGrid';
 
-// 🌐 URL de ton backend Render
-const API_URL = 'https://ley-tv.onrender.com';
-
 function App() {
   const [authenticated, setAuthenticated] = useState(false);
   const [userType, setUserType] = useState('gratuit');
