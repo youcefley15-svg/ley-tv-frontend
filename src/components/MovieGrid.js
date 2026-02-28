@@ -1,51 +1,51 @@
 import React, { useEffect, useState } from 'react';
 
-const API_URL = 'https://ley-tv.onrender.com';
+const API = 'https://ley-tv.onrender.com';
 
-function MovieGrid({ hasPub, userType }) {
+function MovieGrid() {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [category, setCategory] = useState('movies');
+  const [cat, setCat] = useState('movies');
 
   useEffect(() => {
-    const fetchItems = async () => {
+    const load = async () => {
       setLoading(true);
       try {
-        let url = '';
-        if (category === 'movies') url = `${API_URL}/api/movies/popular`;
-        else if (category === 'anime') url = `${API_URL}/api/anime/popular`;
-        else if (category === 'dramas') url = `${API_URL}/api/dramas/popular`;
-        
+        let url = `${API}/api/${cat}/popular`;
         const res = await fetch(url);
         const data = await res.json();
         setItems(data);
-      } catch (error) {
-        console.error(error);
+      } catch (e) {
+        console.log(e);
       } finally {
         setLoading(false);
       }
     };
-    
-    fetchItems();
-  }, [category]);
+    load();
+  }, [cat]);
+
+  const btnStyle = (c) => ({
+    padding: 10,
+    margin: 5,
+    background: cat === c ? '#007bff' : '#f0f0f0',
+    color: cat === c ? 'white' : 'black'
+  });
 
   return (
-    <div style={{ padding: '20px' }}>
+    <div style={{ padding: 20 }}>
       <div>
-        <button onClick={() => setCategory('movies')}>🎬 Films</button>
-        <button onClick={() => setCategory('anime')}>🎌 Animes</button>
-        <button onClick={() => setCategory('dramas')}>📺 Dramas</button>
+        <button onClick={() => setCat('movies')} style={btnStyle('movies')}>Films</button>
+        <button onClick={() => setCat('anime')} style={btnStyle('anime')}>Animes</button>
+        <button onClick={() => setCat('dramas')} style={btnStyle('dramas')}>Dramas</button>
       </div>
 
-      {loading ? (
-        <div>⏳ Chargement...</div>
-      ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '20px' }}>
-          {items.map(item => (
-            <div key={item.id}>
-              <img src={item.image} alt={item.title} style={{ width: '100%', height: '250px' }} />
-              <h3>{item.title}</h3>
-              {item.year && <p>{item.year}</p>}
+      {loading ? <p>Chargement...</p> : (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 20 }}>
+          {items.map(i => (
+            <div key={i.id}>
+              <img src={i.image} alt={i.title} style={{ width: '100%', height: 250 }} />
+              <h4>{i.title}</h4>
+              {i.year && <p>{i.year}</p>}
             </div>
           ))}
         </div>

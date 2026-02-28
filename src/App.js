@@ -3,76 +3,46 @@ import CodeLogin from './components/CodeLogin';
 import MovieGrid from './components/MovieGrid';
 
 function App() {
-  const [authenticated, setAuthenticated] = useState(false);
-  const [userType, setUserType] = useState('gratuit');
-  const [hasPub, setHasPub] = useState(true);
-  const [loading, setLoading] = useState(true);
+  const [auth, setAuth] = useState(false);
+  const [type, setType] = useState('gratuit');
+  const [pub, setPub] = useState(true);
+  const [load, setLoad] = useState(true);
 
   useEffect(() => {
-    const code = localStorage.getItem('user_code');
-    const appareil_id = localStorage.getItem('appareil_id');
-
-    if (code && appareil_id) {
-      setAuthenticated(true);
-      setUserType(localStorage.getItem('user_type') || 'gratuit');
-      setHasPub(localStorage.getItem('has_pub') !== 'false');
+    const code = localStorage.getItem('code');
+    const id = localStorage.getItem('id');
+    if (code && id) {
+      setAuth(true);
+      setType(localStorage.getItem('type') || 'gratuit');
+      setPub(localStorage.getItem('pub') !== 'false');
     }
-    setLoading(false);
+    setLoad(false);
   }, []);
 
-  const handleLogin = (data) => {
-    setAuthenticated(true);
-    setUserType(data.type);
-    setHasPub(data.has_pub);
+  const login = (d) => {
+    setAuth(true);
+    setType(d.type);
+    setPub(d.has_pub);
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem('user_code');
-    localStorage.removeItem('user_type');
-    localStorage.removeItem('has_pub');
-    setAuthenticated(false);
+  const logout = () => {
+    localStorage.clear();
+    setAuth(false);
   };
 
-  if (loading) {
-    return <div style={{ textAlign: 'center', padding: '50px' }}>⏳ Chargement...</div>;
-  }
+  if (load) return <div>Chargement...</div>;
 
   return (
     <div>
-      {!authenticated ? (
-        <CodeLogin onLogin={handleLogin} />
+      {!auth ? (
+        <CodeLogin onLogin={login} />
       ) : (
         <div>
-          <div style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            padding: '10px 20px',
-            backgroundColor: '#f8f9fa',
-            borderBottom: '1px solid #ddd'
-          }}>
-            <div>
-              <strong>🎬 Ley TV</strong>
-              <span style={{ marginLeft: '10px', fontSize: '12px', color: '#666' }}>
-                {userType === 'premium' ? '⭐ Premium' : '📺 Gratuit'}
-                {hasPub ? ' - avec pubs' : ' - sans pubs'}
-              </span>
-            </div>
-            <button
-              onClick={handleLogout}
-              style={{
-                padding: '5px 10px',
-                backgroundColor: '#dc3545',
-                color: 'white',
-                border: 'none',
-                borderRadius: '3px',
-                cursor: 'pointer'
-              }}
-            >
-              Déconnexion
-            </button>
+          <div style={{ display: 'flex', justifyContent: 'space-between', padding: 10 }}>
+            <span>Ley TV - {type} {pub ? '(pubs)' : '(sans pubs)'}</span>
+            <button onClick={logout}>Déconnexion</button>
           </div>
-          <MovieGrid hasPub={hasPub} userType={userType} />
+          <MovieGrid hasPub={pub} />
         </div>
       )}
     </div>
