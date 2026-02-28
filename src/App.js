@@ -4,22 +4,10 @@ import MovieGrid from './components/MovieGrid';
 function App() {
   return (
     <div>
-      <div style={{
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        padding: '10px 20px',
-        backgroundColor: '#f8f9fa',
-        borderBottom: '1px solid #ddd'
-      }}>
-        <div>
-          <strong>🎬 Ley TV</strong>
-          <span style={{ marginLeft: '10px', fontSize: '12px', color: '#666' }}>
-            ⭐ Mode Test (sans code)
-          </span>
-        </div>
+      <div style={{ padding: '10px', backgroundColor: '#f0f0f0', textAlign: 'center' }}>
+        <h1>🎬 Ley TV - Mode Test</h1>
       </div>
-      <MovieGrid hasPub={false} userType="premium" />
+      <MovieGrid />
     </div>
   );
 }
