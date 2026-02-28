@@ -14,16 +14,23 @@ function MovieGrid() {
   const fetchItems = useCallback(async () => {
     setLoading(true);
     try {
-      let url = `${API_URL}/api/${category}/popular?page=${page}`;
-      const response = await fetch(url);
+      const response = await fetch(`${API_URL}/api/${category}/popular?page=${page}`);
       const data = await response.json();
       
+      // Gestion des différents formats de réponse
       if (data.films) {
         setItems(data.films);
         setTotalPages(data.totalPages || 1);
+      } else if (Array.isArray(data)) {
+        setItems(data);
+        setTotalPages(1);
+      } else {
+        console.log('Format inattendu:', data);
+        setItems([]);
       }
     } catch (error) {
       console.error('Erreur chargement:', error);
+      setItems([]);
     } finally {
       setLoading(false);
     }
@@ -43,6 +50,8 @@ function MovieGrid() {
       
       if (data.embed) {
         setStreamUrl(data.embed);
+      } else {
+        alert('Lien de streaming non disponible');
       }
     } catch (error) {
       console.error('Erreur lecture:', error);
@@ -62,7 +71,8 @@ function MovieGrid() {
     color: category === cat ? 'white' : 'black',
     border: 'none',
     borderRadius: '4px',
-    cursor: 'pointer'
+    cursor: 'pointer',
+    fontSize: '14px'
   });
 
   return (
@@ -70,10 +80,30 @@ function MovieGrid() {
       {!selectedMovie ? (
         <>
           <div style={{ marginBottom: '20px' }}>
-            <button onClick={() => { setCategory('movies'); setPage(1); }} style={getButtonStyle('movies')}>🎬 Films</button>
-            <button onClick={() => { setCategory('anime'); setPage(1); }} style={getButtonStyle('anime')}>🎌 Animes</button>
-            <button onClick={() => { setCategory('dramas'); setPage(1); }} style={getButtonStyle('dramas')}>📺 Dramas</button>
-            <button onClick={() => { setCategory('arabic'); setPage(1); }} style={getButtonStyle('arabic')}>🌍 Arabes</button>
+            <button 
+              onClick={() => { setCategory('movies'); setPage(1); }} 
+              style={getButtonStyle('movies')}
+            >
+              🎬 Films
+            </button>
+            <button 
+              onClick={() => { setCategory('anime'); setPage(1); }} 
+              style={getButtonStyle('anime')}
+            >
+              🎌 Animes
+            </button>
+            <button 
+              onClick={() => { setCategory('dramas'); setPage(1); }} 
+              style={getButtonStyle('dramas')}
+            >
+              📺 Dramas
+            </button>
+            <button 
+              onClick={() => { setCategory('arabic'); setPage(1); }} 
+              style={getButtonStyle('arabic')}
+            >
+              🌍 Arabes
+            </button>
           </div>
 
           {loading ? (
@@ -104,7 +134,11 @@ function MovieGrid() {
                           border: '1px solid #ddd', 
                           borderRadius: '8px',
                           overflow: 'hidden',
-                          cursor: 'pointer'
+                          cursor: 'pointer',
+                          transition: 'transform 0.2s',
+                          ':hover': {
+                            transform: 'scale(1.05)'
+                          }
                         }}
                       >
                         <img 
@@ -115,6 +149,9 @@ function MovieGrid() {
                             height: '250px', 
                             objectFit: 'cover' 
                           }} 
+                          onError={(e) => {
+                            e.target.src = 'https://via.placeholder.com/200x250?text=Image+non+disponible';
+                          }}
                         />
                         <div style={{ padding: '10px' }}>
                           <h3 style={{ fontSize: '16px', margin: 0 }}>{item.title}</h3>
@@ -126,9 +163,38 @@ function MovieGrid() {
                   
                   {totalPages > 1 && (
                     <div style={{ marginTop: '30px', textAlign: 'center' }}>
-                      <button onClick={() => setPage(p => Math.max(1, p-1))} disabled={page === 1}>← Précédent</button>
+                      <button 
+                        onClick={() => setPage(p => Math.max(1, p-1))}
+                        disabled={page === 1}
+                        style={{
+                          padding: '8px 16px',
+                          marginRight: '10px',
+                          backgroundColor: '#007bff',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: '4px',
+                          cursor: page === 1 ? 'not-allowed' : 'pointer',
+                          opacity: page === 1 ? 0.5 : 1
+                        }}
+                      >
+                        ← Précédent
+                      </button>
                       <span style={{ margin: '0 15px' }}>Page {page} / {totalPages}</span>
-                      <button onClick={() => setPage(p => Math.min(totalPages, p+1))} disabled={page === totalPages}>Suivant →</button>
+                      <button 
+                        onClick={() => setPage(p => Math.min(totalPages, p+1))}
+                        disabled={page === totalPages}
+                        style={{
+                          padding: '8px 16px',
+                          backgroundColor: '#007bff',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: '4px',
+                          cursor: page === totalPages ? 'not-allowed' : 'pointer',
+                          opacity: page === totalPages ? 0.5 : 1
+                        }}
+                      >
+                        Suivant →
+                      </button>
                     </div>
                   )}
                 </>
@@ -138,10 +204,23 @@ function MovieGrid() {
         </>
       ) : (
         <div>
-          <button onClick={closePlayer} style={{ padding: '10px 20px', marginBottom: '20px' }}>
-            ← Retour
+          <button 
+            onClick={closePlayer}
+            style={{
+              padding: '10px 20px',
+              marginBottom: '20px',
+              backgroundColor: '#6c757d',
+              color: 'white',
+              border: 'none',
+              borderRadius: '4px',
+              cursor: 'pointer'
+            }}
+          >
+            ← Retour aux films
           </button>
+          
           <h2>{selectedMovie.title}</h2>
+          
           {streamUrl ? (
             <iframe
               src={streamUrl}
@@ -152,7 +231,7 @@ function MovieGrid() {
               title={selectedMovie.title}
             />
           ) : (
-            <p>Chargement...</p>
+            <p>Chargement du lecteur...</p>
           )}
         </div>
       )}
