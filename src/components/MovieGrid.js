@@ -12,7 +12,7 @@ function MovieGrid() {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
 
-  // 🌍 Drapeaux et noms de langues (corrigé)
+  // 🌍 Drapeaux et noms de langues
   const getLanguageInfo = (langCode) => {
     const languages = {
       'en': { flag: '🇬🇧', name: 'Anglais' },
@@ -68,35 +68,75 @@ function MovieGrid() {
     }
   };
 
-  // Lire le film avec embed.su (moins de pubs)
+  // 📺 TOUTES LES SOURCES 2026 (classées de la plus propre à la moins propre)
+  const getStreamSources = (movieId) => [
+    `https://vidlink.xyz/movie/${movieId}`,        // #1 : Très propre, fiable
+    `https://autoembed.cc/movie/${movieId}`,        // #2 : Agrégateur fiable
+    `https://multiembed.mov/?video_id=${movieId}&tmdb=1`, // #3 : Support TMDB
+    `https://moviesapi.club/movie/${movieId}`,      // #4 : Rapide, peu de pubs
+    `https://vidsrc.xyz/embed/movie/${movieId}`,    // #5 : Alternative stable
+    `https://embed.su/embed/movie/${movieId}`,      // #6 : Backup
+    `https://vidsrc.to/embed/movie/${movieId}`      // #7 : Dernier recours
+  ];
+
+  // Changer de source (si la première ne marche pas)
+  const [sourceIndex, setSourceIndex] = useState(0);
+
   const playMovie = (movie) => {
     setSelectedMovie(movie);
-    setStreamUrl(`https://embed.su/embed/movie/${movie.id}`);
+    setSourceIndex(0);
+    setStreamUrl(getStreamSources(movie.id)[0]);
+  };
+
+  const changeSource = () => {
+    const nextIndex = (sourceIndex + 1) % getStreamSources(selectedMovie.id).length;
+    setSourceIndex(nextIndex);
+    setStreamUrl(getStreamSources(selectedMovie.id)[nextIndex]);
   };
 
   const closePlayer = () => {
     setSelectedMovie(null);
     setStreamUrl('');
+    setSourceIndex(0);
   };
 
+  // Affichage du lecteur
   if (selectedMovie) {
     const langInfo = getLanguageInfo(selectedMovie.original_language);
+    const sources = getStreamSources(selectedMovie.id);
+    
     return (
       <div style={{ padding: '20px' }}>
-        <button 
-          onClick={closePlayer}
-          style={{
-            padding: '10px 20px',
-            marginBottom: '20px',
-            backgroundColor: '#6c757d',
-            color: 'white',
-            border: 'none',
-            borderRadius: '4px',
-            cursor: 'pointer'
-          }}
-        >
-          ← Retour aux films
-        </button>
+        <div style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
+          <button 
+            onClick={closePlayer}
+            style={{
+              padding: '10px 20px',
+              backgroundColor: '#6c757d',
+              color: 'white',
+              border: 'none',
+              borderRadius: '4px',
+              cursor: 'pointer'
+            }}
+          >
+            ← Retour
+          </button>
+          {sources.length > 1 && (
+            <button 
+              onClick={changeSource}
+              style={{
+                padding: '10px 20px',
+                backgroundColor: '#28a745',
+                color: 'white',
+                border: 'none',
+                borderRadius: '4px',
+                cursor: 'pointer'
+              }}
+            >
+              🔄 Changer de source ({sourceIndex + 1}/{sources.length})
+            </button>
+          )}
+        </div>
         
         <h2>{selectedMovie.title}</h2>
         <p style={{ marginBottom: '20px' }}>
@@ -105,6 +145,7 @@ function MovieGrid() {
         </p>
         
         <iframe
+          key={streamUrl} // Force le rechargement quand la source change
           src={streamUrl}
           width="100%"
           height="500"
@@ -116,6 +157,7 @@ function MovieGrid() {
     );
   }
 
+  // Affichage de la grille
   return (
     <div style={{ padding: '20px' }}>
       <div style={{ marginBottom: '20px', display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
@@ -189,7 +231,7 @@ function MovieGrid() {
             })}
           </div>
 
-          {/* Pagination pour plus de films */}
+          {/* Pagination */}
           {totalPages > 1 && (
             <div style={{ marginTop: '30px', textAlign: 'center' }}>
               <button 
