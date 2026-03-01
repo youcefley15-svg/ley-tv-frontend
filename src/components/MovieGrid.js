@@ -14,31 +14,28 @@ function MovieGrid() {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
 
-  // 🌍 Fonction plus robuste pour les drapeaux
-  const getLanguageInfo = (langCode) => {
-    // Mapping complet des codes langue -> drapeau et nom
-    const languages = {
-      'en': { flag: '🇬🇧', name: 'Anglais' },
-      'fr': { flag: '🇫🇷', name: 'Français' },
-      'ar': { flag: '🇸🇦', name: 'Arabe' },
-      'ko': { flag: '🇰🇷', name: 'Coréen' },
-      'ja': { flag: '🇯🇵', name: 'Japonais' },
-      'zh': { flag: '🇨🇳', name: 'Chinois' },
-      'hi': { flag: '🇮🇳', name: 'Hindi' },
-      'de': { flag: '🇩🇪', name: 'Allemand' },
-      'es': { flag: '🇪🇸', name: 'Espagnol' },
-      'it': { flag: '🇮🇹', name: 'Italien' },
-      'pt': { flag: '🇵🇹', name: 'Portugais' },
-      'ru': { flag: '🇷🇺', name: 'Russe' },
-      'tr': { flag: '🇹🇷', name: 'Turc' }
-    };
-
-    // Si le code langue existe, on retourne drapeau + nom
-    if (langCode && languages[langCode]) {
-      return languages[langCode];
+  // 🌍 Fonction pour obtenir le drapeau (même sans langue)
+  const getLanguageInfo = (movie) => {
+    // Si la langue est fournie par l'API
+    if (movie.original_language) {
+      const languages = {
+        'en': '🇬🇧 Anglais', 'fr': '🇫🇷 Français', 'ar': '🇸🇦 Arabe',
+        'ko': '🇰🇷 Coréen', 'ja': '🇯🇵 Japonais', 'zh': '🇨🇳 Chinois',
+        'hi': '🇮🇳 Hindi', 'de': '🇩🇪 Allemand', 'es': '🇪🇸 Espagnol',
+        'it': '🇮🇹 Italien', 'pt': '🇵🇹 Portugais', 'ru': '🇷🇺 Russe',
+        'tr': '🇹🇷 Turc'
+      };
+      return languages[movie.original_language] || `🌐 ${movie.original_language.toUpperCase()}`;
     }
-    // Sinon, on retourne un drapeau générique et le code en majuscules
-    return { flag: '🌐', name: langCode ? langCode.toUpperCase() : 'VO' };
+    
+    // Fallback basé sur la catégorie
+    const categoryFallback = {
+      'movies': '🇬🇧 Film',
+      'anime': '🇯🇵 Anime',
+      'dramas': '🇰🇷 Drama',
+      'arabic': '🇸🇦 Arabe'
+    };
+    return categoryFallback[category] || '🎬 Film';
   };
 
   useEffect(() => {
@@ -51,26 +48,14 @@ function MovieGrid() {
     try {
       const response = await fetch(`${API_URL}/api/${category}/popular?page=${page}`);
       const data = await response.json();
-
+      
       let filmsArray = [];
-
-      if (data.films && Array.isArray(data.films)) {
-        filmsArray = data.films;
-        setTotalPages(data.totalPages || 1);
-      } else if (data.results && Array.isArray(data.results)) {
-        filmsArray = data.results;
-        setTotalPages(data.total_pages || 1);
-      } else if (Array.isArray(data)) {
-        filmsArray = data;
-        setTotalPages(1);
-      }
-
-      if (filmsArray.length > 0) {
-        setItems(filmsArray);
-      } else {
-        setError('Aucun film trouvé');
-        setItems([]);
-      }
+      if (data.films) filmsArray = data.films;
+      else if (data.results) filmsArray = data.results;
+      else if (Array.isArray(data)) filmsArray = data;
+      
+      setItems(filmsArray);
+      setTotalPages(data.totalPages || data.total_pages || 1);
     } catch (error) {
       setError('Erreur de chargement');
     } finally {
@@ -78,28 +63,18 @@ function MovieGrid() {
     }
   };
 
-  // Fonction pour charger la bande-annonce
   const fetchTrailer = async (movieId) => {
     setLoadingTrailer(true);
-    setTrailerUrl(''); // Reset
+    setTrailerUrl('');
     try {
       const response = await fetch(`${API_URL}/api/movies/${movieId}/videos`);
       const data = await response.json();
-
       if (data.results && data.results.length > 0) {
-        // Cherche d'abord une vraie bande-annonce
-        const trailer = data.results.find(video => video.type === 'Trailer' && video.site === 'YouTube');
-        if (trailer) {
-          setTrailerUrl(`https://www.youtube.com/watch?v=${trailer.key}`);
-        } else {
-          // Sinon prend la première vidéo disponible
-          setTrailerUrl(`https://www.youtube.com/watch?v=${data.results[0].key}`);
-        }
-      } else {
-        setTrailerUrl(null); // Pas de vidéo
+        const trailer = data.results.find(v => v.type === 'Trailer' && v.site === 'YouTube');
+        setTrailerUrl(`https://www.youtube.com/watch?v=${(trailer || data.results[0]).key}`);
       }
     } catch (error) {
-      setTrailerUrl(null);
+      console.log('Pas de bande-annonce');
     } finally {
       setLoadingTrailer(false);
     }
@@ -108,7 +83,6 @@ function MovieGrid() {
   const playMovie = (movie) => {
     setSelectedMovie(movie);
     setStreamUrl(`https://vidsrc.xyz/embed/movie/${movie.id}`);
-    setTrailerUrl('');
     fetchTrailer(movie.id);
   };
 
@@ -118,104 +92,86 @@ function MovieGrid() {
     setTrailerUrl('');
   };
 
-  // Affichage du lecteur
+  // Lecteur
   if (selectedMovie) {
-    const langInfo = getLanguageInfo(selectedMovie.original_language);
-
     return (
       <div style={{ padding: '20px' }}>
-        <button onClick={closePlayer} style={styles.backButton}>
-          ← Retour aux films
-        </button>
-
+        <button onClick={closePlayer} style={styles.backButton}>← Retour</button>
         <h2>{selectedMovie.title}</h2>
-
-        {/* Langue et année */}
-        <p style={styles.movieMeta}>
-          <span style={{ marginRight: '15px' }}>{langInfo.flag} {langInfo.name}</span>
-          {selectedMovie.year && <span>📅 {selectedMovie.year}</span>}
+        <p style={styles.meta}>
+          <span>{getLanguageInfo(selectedMovie)}</span>
+          {selectedMovie.year && <span> • {selectedMovie.year}</span>}
         </p>
 
-        {/* Bande-annonce */}
-        {loadingTrailer && <p>Chargement de la bande-annonce...</p>}
+        {loadingTrailer && <p>Chargement bande-annonce...</p>}
         {!loadingTrailer && trailerUrl && (
-          <div style={{ marginBottom: '20px' }}>
-            <a href={trailerUrl} target="_blank" rel="noopener noreferrer" style={styles.trailerButton}>
-              ▶ Regarder la bande-annonce
-            </a>
-          </div>
+          <a href={trailerUrl} target="_blank" rel="noopener noreferrer" style={styles.trailerButton}>
+            ▶ Bande-annonce
+          </a>
         )}
-        {!loadingTrailer && trailerUrl === null && (
-          <p style={{ fontStyle: 'italic', color: '#888' }}>Aucune bande-annonce disponible.</p>
+        {!loadingTrailer && !trailerUrl && (
+          <p style={{ color: '#888' }}>Pas de bande-annonce</p>
         )}
 
-        {/* Description */}
-        {selectedMovie.description && selectedMovie.description !== "Description non disponible" ? (
-          <div style={styles.descriptionBox}>
-            <h3 style={{ marginTop: 0 }}>Synopsis</h3>
-            <p style={{ margin: 0 }}>{selectedMovie.description}</p>
+        {selectedMovie.description && selectedMovie.description !== "Description non disponible" && (
+          <div style={styles.description}>
+            <h3>Synopsis</h3>
+            <p>{selectedMovie.description}</p>
           </div>
-        ) : (
-          <p style={{ fontStyle: 'italic', color: '#888' }}>Aucune description disponible.</p>
         )}
 
-        {/* Lecteur */}
-        <iframe
-          src={streamUrl}
-          width="100%"
-          height="500"
-          style={styles.iframe}
-          allowFullScreen
-          title={selectedMovie.title}
-        />
+        <iframe src={streamUrl} width="100%" height="500" style={styles.iframe} allowFullScreen />
       </div>
     );
   }
 
-  // Grille des films
+  // Grille
   return (
     <div style={{ padding: '20px' }}>
-      <div style={styles.categoryContainer}>
-        <button onClick={() => { setCategory('movies'); setPage(1); }} style={buttonStyle(category === 'movies')}>🎬 Films</button>
-        <button onClick={() => { setCategory('anime'); setPage(1); }} style={buttonStyle(category === 'anime')}>🎌 Animes</button>
-        <button onClick={() => { setCategory('dramas'); setPage(1); }} style={buttonStyle(category === 'dramas')}>📺 Dramas</button>
-        <button onClick={() => { setCategory('arabic'); setPage(1); }} style={buttonStyle(category === 'arabic')}>🌍 Arabes</button>
+      <div style={styles.categoryRow}>
+        {['movies', 'anime', 'dramas', 'arabic'].map(cat => (
+          <button
+            key={cat}
+            onClick={() => { setCategory(cat); setPage(1); }}
+            style={buttonStyle(category === cat)}
+          >
+            {cat === 'movies' && '🎬 Films'}
+            {cat === 'anime' && '🎌 Animes'}
+            {cat === 'dramas' && '📺 Dramas'}
+            {cat === 'arabic' && '🌍 Arabes'}
+          </button>
+        ))}
       </div>
 
       {loading && <div style={styles.centered}>⏳ Chargement...</div>}
       {error && <div style={{ ...styles.centered, color: 'red' }}>❌ {error}</div>}
 
       {!loading && !error && items.length === 0 && (
-        <div style={styles.centered}>Aucun film disponible</div>
+        <div style={styles.centered}>Aucun film</div>
       )}
 
       {items.length > 0 && (
         <>
           <div style={styles.grid}>
-            {items.map(item => {
-              const langInfo = getLanguageInfo(item.original_language);
-              return (
-                <div key={item.id} onClick={() => playMovie(item)} style={styles.card}>
-                  <img src={item.image || 'https://via.placeholder.com/300x450'} alt={item.title} style={styles.cardImage} />
-                  <div style={{ padding: '12px' }}>
-                    <h3 style={styles.cardTitle}>{item.title}</h3>
-                    <div style={styles.cardMeta}>
-                      <span>{item.year || 'N/A'}</span>
-                      <span title={langInfo.name}>
-                        {langInfo.flag} {langInfo.name}
-                      </span>
-                    </div>
+            {items.map(item => (
+              <div key={item.id} onClick={() => playMovie(item)} style={styles.card}>
+                <img src={item.image} alt={item.title} style={styles.cardImage} />
+                <div style={{ padding: '12px' }}>
+                  <h3 style={styles.cardTitle}>{item.title}</h3>
+                  <div style={styles.cardMeta}>
+                    <span>{item.year || ''}</span>
+                    <span>{getLanguageInfo(item)}</span>
                   </div>
                 </div>
-              );
-            })}
+              </div>
+            ))}
           </div>
 
           {totalPages > 1 && (
             <div style={styles.pagination}>
-              <button onClick={() => setPage(p => Math.max(1, p-1))} disabled={page === 1} style={pageButtonStyle(page === 1)}>← Précédent</button>
-              <span style={{ margin: '0 15px', fontWeight: 'bold' }}>Page {page} / {totalPages}</span>
-              <button onClick={() => setPage(p => Math.min(totalPages, p+1))} disabled={page === totalPages} style={pageButtonStyle(page === totalPages)}>Suivant →</button>
+              <button onClick={() => setPage(p => Math.max(1, p-1))} disabled={page === 1} style={pageButtonStyle(page === 1)}>←</button>
+              <span>{page} / {totalPages}</span>
+              <button onClick={() => setPage(p => Math.min(totalPages, p+1))} disabled={page === totalPages} style={pageButtonStyle(page === totalPages)}>→</button>
             </div>
           )}
         </>
@@ -224,85 +180,21 @@ function MovieGrid() {
   );
 }
 
-// --- Styles (pour rendre le code plus propre) ---
+// Styles
 const styles = {
-  backButton: {
-    padding: '10px 20px',
-    marginBottom: '20px',
-    backgroundColor: '#6c757d',
-    color: 'white',
-    border: 'none',
-    borderRadius: '4px',
-    cursor: 'pointer'
-  },
-  movieMeta: {
-    marginBottom: '15px',
-    fontSize: '1.1rem'
-  },
-  trailerButton: {
-    display: 'inline-block',
-    padding: '10px 20px',
-    backgroundColor: '#ff0000',
-    color: 'white',
-    textDecoration: 'none',
-    borderRadius: '4px',
-    fontWeight: 'bold'
-  },
-  descriptionBox: {
-    marginBottom: '20px',
-    padding: '15px',
-    backgroundColor: '#f8f9fa',
-    borderRadius: '8px',
-    lineHeight: '1.6'
-  },
-  iframe: {
-    border: 'none',
-    borderRadius: '8px'
-  },
-  categoryContainer: {
-    marginBottom: '20px',
-    display: 'flex',
-    gap: '10px',
-    flexWrap: 'wrap'
-  },
-  centered: {
-    textAlign: 'center',
-    padding: '20px'
-  },
-  grid: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
-    gap: '20px'
-  },
-  card: {
-    border: '1px solid #ddd',
-    borderRadius: '8px',
-    overflow: 'hidden',
-    cursor: 'pointer',
-    backgroundColor: 'white',
-    boxShadow: '0 2px 5px rgba(0,0,0,0.1)',
-    transition: 'transform 0.2s'
-  },
-  cardImage: {
-    width: '100%',
-    height: '250px',
-    objectFit: 'cover'
-  },
-  cardTitle: {
-    fontSize: '16px',
-    margin: '0 0 8px 0'
-  },
-  cardMeta: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    fontSize: '13px',
-    color: '#666'
-  },
-  pagination: {
-    marginTop: '30px',
-    textAlign: 'center'
-  }
+  backButton: { padding: '10px 20px', marginBottom: '20px', backgroundColor: '#6c757d', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' },
+  meta: { marginBottom: '15px', fontSize: '1.1rem' },
+  trailerButton: { display: 'inline-block', padding: '10px 20px', backgroundColor: '#ff0000', color: 'white', textDecoration: 'none', borderRadius: '4px', fontWeight: 'bold', marginBottom: '20px' },
+  description: { marginBottom: '20px', padding: '15px', backgroundColor: '#f8f9fa', borderRadius: '8px', lineHeight: '1.6' },
+  iframe: { border: 'none', borderRadius: '8px' },
+  categoryRow: { marginBottom: '20px', display: 'flex', gap: '10px', flexWrap: 'wrap' },
+  centered: { textAlign: 'center', padding: '20px' },
+  grid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '20px' },
+  card: { border: '1px solid #ddd', borderRadius: '8px', overflow: 'hidden', cursor: 'pointer', backgroundColor: 'white', boxShadow: '0 2px 5px rgba(0,0,0,0.1)' },
+  cardImage: { width: '100%', height: '250px', objectFit: 'cover' },
+  cardTitle: { fontSize: '16px', margin: '0 0 8px 0' },
+  cardMeta: { display: 'flex', justifyContent: 'space-between', fontSize: '13px', color: '#666' },
+  pagination: { marginTop: '30px', textAlign: 'center', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '15px' }
 };
 
 const buttonStyle = (isActive) => ({
@@ -311,9 +203,7 @@ const buttonStyle = (isActive) => ({
   color: isActive ? 'white' : 'black',
   border: 'none',
   borderRadius: '4px',
-  cursor: 'pointer',
-  fontSize: '14px',
-  fontWeight: isActive ? 'bold' : 'normal'
+  cursor: 'pointer'
 });
 
 const pageButtonStyle = (isDisabled) => ({
