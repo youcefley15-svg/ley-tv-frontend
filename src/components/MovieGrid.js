@@ -9,6 +9,7 @@ function MovieGrid() {
   const [error, setError] = useState('');
   const [selectedMovie, setSelectedMovie] = useState(null);
   const [streamUrl, setStreamUrl] = useState('');
+  const [loadingStream, setLoadingStream] = useState(false);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
 
@@ -68,75 +69,100 @@ function MovieGrid() {
     }
   };
 
-  // 📺 TOUTES LES SOURCES 2026 (classées de la plus propre à la moins propre)
+  // 📺 TOUTES LES SOURCES classées par qualité (moins de pubs en premier)
   const getStreamSources = (movieId) => [
-    `https://vidlink.xyz/movie/${movieId}`,        // #1 : Très propre, fiable
-    `https://autoembed.cc/movie/${movieId}`,        // #2 : Agrégateur fiable
-    `https://multiembed.mov/?video_id=${movieId}&tmdb=1`, // #3 : Support TMDB
-    `https://moviesapi.club/movie/${movieId}`,      // #4 : Rapide, peu de pubs
-    `https://vidsrc.xyz/embed/movie/${movieId}`,    // #5 : Alternative stable
-    `https://embed.su/embed/movie/${movieId}`,      // #6 : Backup
-    `https://vidsrc.to/embed/movie/${movieId}`      // #7 : Dernier recours
+    // Sources récentes et réputées propres (d'après les résultats 2026) [citation:4][citation:5]
+    { url: `https://vidsrc.xyz/embed/movie/${movieId}`, quality: 'haute', ads: 'peu' },
+    { url: `https://multiembed.mov/?video_id=${movieId}&tmdb=1`, quality: 'haute', ads: 'peu' },
+    { url: `https://moviesapi.club/movie/${movieId}`, quality: 'moyenne', ads: 'peu' },
+    { url: `https://autoembed.cc/movie/${movieId}`, quality: 'moyenne', ads: 'moyen' },
+    
+    // Sources classiques (plus de pubs)
+    { url: `https://vidsrc.to/embed/movie/${movieId}`, quality: 'haute', ads: 'beaucoup' },
+    { url: `https://2embed.cc/embed/${movieId}`, quality: 'moyenne', ads: 'beaucoup' },
+    
+    // Nouvelles sources prometteuses (d'après les comparatifs) [citation:5]
+    { url: `https://monstream.archi/embed/movie/${movieId}`, quality: 'haute', ads: 'peu' },
+    { url: `https://papadustream.trade/embed/movie/${movieId}`, quality: 'haute', ads: 'moyen' },
+    
+    // Sites alternatifs récents
+    { url: `https://wiflix.art/embed/movie/${movieId}`, quality: 'moyenne', ads: 'moyen' },
+    { url: `https://filmoflix.agency/embed/movie/${movieId}`, quality: 'moyenne', ads: 'moyen' }
   ];
 
-  // Changer de source (si la première ne marche pas)
-  const [sourceIndex, setSourceIndex] = useState(0);
-
-  const playMovie = (movie) => {
-    setSelectedMovie(movie);
-    setSourceIndex(0);
-    setStreamUrl(getStreamSources(movie.id)[0]);
+  // Fonction pour tester et trouver la meilleure source automatiquement
+  const findBestSource = async (movieId) => {
+    const sources = getStreamSources(movieId);
+    
+    for (let i = 0; i < sources.length; i++) {
+      const source = sources[i];
+      try {
+        console.log(`🔍 Test source ${i+1}/${sources.length}: ${source.url.substring(0, 50)}...`);
+        
+        // Test rapide avec HEAD request
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 3000); // timeout 3 secondes
+        
+        const response = await fetch(source.url, { 
+          method: 'HEAD',
+          signal: controller.signal,
+          mode: 'no-cors' // Pour éviter les erreurs CORS
+        }).catch(() => null);
+        
+        clearTimeout(timeoutId);
+        
+        // Si la source répond, on la garde
+        console.log(`✅ Source ${i+1} fonctionnelle`);
+        return source.url;
+        
+      } catch (error) {
+        console.log(`❌ Source ${i+1} échouée`);
+        continue;
+      }
+    }
+    
+    // Si aucune source ne répond, retourner la première par défaut
+    console.log('⚠️ Aucune source trouvée, utilisation de la première');
+    return sources[0].url;
   };
 
-  const changeSource = () => {
-    const nextIndex = (sourceIndex + 1) % getStreamSources(selectedMovie.id).length;
-    setSourceIndex(nextIndex);
-    setStreamUrl(getStreamSources(selectedMovie.id)[nextIndex]);
+  const playMovie = async (movie) => {
+    setSelectedMovie(movie);
+    setStreamUrl('');
+    setLoadingStream(true);
+    
+    // Chercher la meilleure source automatiquement
+    const bestUrl = await findBestSource(movie.id);
+    setStreamUrl(bestUrl);
+    
+    setLoadingStream(false);
   };
 
   const closePlayer = () => {
     setSelectedMovie(null);
     setStreamUrl('');
-    setSourceIndex(0);
   };
 
   // Affichage du lecteur
   if (selectedMovie) {
     const langInfo = getLanguageInfo(selectedMovie.original_language);
-    const sources = getStreamSources(selectedMovie.id);
     
     return (
       <div style={{ padding: '20px' }}>
-        <div style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
-          <button 
-            onClick={closePlayer}
-            style={{
-              padding: '10px 20px',
-              backgroundColor: '#6c757d',
-              color: 'white',
-              border: 'none',
-              borderRadius: '4px',
-              cursor: 'pointer'
-            }}
-          >
-            ← Retour
-          </button>
-          {sources.length > 1 && (
-            <button 
-              onClick={changeSource}
-              style={{
-                padding: '10px 20px',
-                backgroundColor: '#28a745',
-                color: 'white',
-                border: 'none',
-                borderRadius: '4px',
-                cursor: 'pointer'
-              }}
-            >
-              🔄 Changer de source ({sourceIndex + 1}/{sources.length})
-            </button>
-          )}
-        </div>
+        <button 
+          onClick={closePlayer}
+          style={{
+            padding: '10px 20px',
+            marginBottom: '20px',
+            backgroundColor: '#6c757d',
+            color: 'white',
+            border: 'none',
+            borderRadius: '4px',
+            cursor: 'pointer'
+          }}
+        >
+          ← Retour
+        </button>
         
         <h2>{selectedMovie.title}</h2>
         <p style={{ marginBottom: '20px' }}>
@@ -144,20 +170,23 @@ function MovieGrid() {
           {langInfo.name} • {selectedMovie.year || 'Année inconnue'}
         </p>
         
-        <iframe
-          key={streamUrl} // Force le rechargement quand la source change
-          src={streamUrl}
-          width="100%"
-          height="500"
-          style={{ border: 'none', borderRadius: '8px' }}
-          allowFullScreen
-          title={selectedMovie.title}
-        />
+        {loadingStream ? (
+          <p>🔍 Recherche de la meilleure source...</p>
+        ) : (
+          <iframe
+            src={streamUrl}
+            width="100%"
+            height="500"
+            style={{ border: 'none', borderRadius: '8px' }}
+            allowFullScreen
+            title={selectedMovie.title}
+          />
+        )}
       </div>
     );
   }
 
-  // Affichage de la grille
+  // Affichage de la grille (inchangé)
   return (
     <div style={{ padding: '20px' }}>
       <div style={{ marginBottom: '20px', display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
