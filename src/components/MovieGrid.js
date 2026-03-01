@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from 'react';
-import './MovieGrid.css';
 
 const API_URL = 'https://ley-tv.onrender.com';
 
@@ -9,31 +8,9 @@ function MovieGrid() {
   const [category, setCategory] = useState('movies');
   const [error, setError] = useState('');
   const [selectedMovie, setSelectedMovie] = useState(null);
+  const [streamUrl, setStreamUrl] = useState('');
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-  const [scrolled, setScrolled] = useState(false);
-
-  // Détection du scroll
-  useEffect(() => {
-    const handleScroll = () => {
-      setScrolled(window.scrollY > 50);
-    };
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
-
-  const getLanguageInfo = (langCode) => {
-    const normalizedCode = langCode === 'gb' ? 'en' : langCode;
-    const languages = {
-      'en': { flag: '🇬🇧', name: 'Anglais' },
-      'fr': { flag: '🇫🇷', name: 'Français' },
-      'ar': { flag: '🇸🇦', name: 'Arabe' },
-      'ko': { flag: '🇰🇷', name: 'Coréen' },
-      'ja': { flag: '🇯🇵', name: 'Japonais' },
-      'zh': { flag: '🇨🇳', name: 'Chinois' },
-    };
-    return languages[normalizedCode] || { flag: '🌐', name: langCode?.toUpperCase() || 'VO' };
-  };
 
   useEffect(() => {
     fetchItems();
@@ -41,53 +18,40 @@ function MovieGrid() {
 
   const fetchItems = async () => {
     setLoading(true);
-    setError('');
     try {
       const response = await fetch(`${API_URL}/api/${category}/popular?page=${page}`);
       const data = await response.json();
       
-      let filmsArray = [];
-      if (data.films && Array.isArray(data.films)) {
-        filmsArray = data.films;
-      } else if (data.results && Array.isArray(data.results)) {
-        filmsArray = data.results;
-      } else if (Array.isArray(data)) {
-        filmsArray = data;
+      if (data.films) {
+        setItems(data.films);
+        setTotalPages(data.totalPages || 1);
       }
-      
-      setItems(filmsArray);
-      setTotalPages(data.totalPages || data.total_pages || 1);
     } catch (error) {
-      setError('Erreur de chargement');
+      setError('Erreur');
     } finally {
       setLoading(false);
     }
   };
 
-  // Version simplifiée qui devrait marcher
   const playMovie = (movie) => {
     setSelectedMovie(movie);
+    setStreamUrl(`https://vidsrc.xyz/embed/movie/${movie.id}`);
   };
 
   const closePlayer = () => {
     setSelectedMovie(null);
+    setStreamUrl('');
   };
 
-  // Lecteur intégré simplifié
   if (selectedMovie) {
-    const langInfo = getLanguageInfo(selectedMovie.original_language);
     return (
-      <div className="netflix-player">
-        <button className="netflix-back-btn" onClick={closePlayer}>← Retour</button>
-        <h1 className="netflix-player-title">{selectedMovie.title}</h1>
-        <p className="netflix-player-meta">
-          <span>{langInfo.flag} {langInfo.name}</span>
-          {selectedMovie.year && <span> • {selectedMovie.year}</span>}
-        </p>
-        
+      <div style={{ padding: '20px' }}>
+        <button onClick={closePlayer}>← Retour</button>
+        <h2>{selectedMovie.title}</h2>
         <iframe
-          src={`https://vidsrc.xyz/embed/movie/${selectedMovie.id}`}
-          className="netflix-player-iframe"
+          src={streamUrl}
+          width="100%"
+          height="500"
           allowFullScreen
           title={selectedMovie.title}
         />
@@ -96,87 +60,26 @@ function MovieGrid() {
   }
 
   return (
-    <>
-      <header className={`netflix-header ${scrolled ? 'scrolled' : ''}`}>
-        <span className="netflix-logo">LeY Tv</span>
-        <nav className="netflix-nav">
-          <a href="#" onClick={(e) => { e.preventDefault(); setCategory('movies'); setPage(1); }} className={category === 'movies' ? 'active' : ''}>Films</a>
-          <a href="#" onClick={(e) => { e.preventDefault(); setCategory('anime'); setPage(1); }} className={category === 'anime' ? 'active' : ''}>Animes</a>
-          <a href="#" onClick={(e) => { e.preventDefault(); setCategory('dramas'); setPage(1); }} className={category === 'dramas' ? 'active' : ''}>Dramas</a>
-          <a href="#" onClick={(e) => { e.preventDefault(); setCategory('arabic'); setPage(1); }} className={category === 'arabic' ? 'active' : ''}>Arabes</a>
-        </nav>
-      </header>
-
-      <div style={{ paddingTop: '70px' }}>
-        {/* Hero banner */}
-        {!loading && items.length > 0 && page === 1 && (
-          <div 
-            className="netflix-hero" 
-            style={{ 
-              backgroundImage: `linear-gradient(90deg, rgba(0,0,0,0.8) 0%, transparent 50%), url(${items[0]?.image})`
-            }}
-          >
-            <div className="netflix-hero-content">
-              <h1 className="netflix-hero-title">{items[0]?.title}</h1>
-              <p className="netflix-hero-description">{items[0]?.description}</p>
-              <div className="netflix-hero-buttons">
-                <button className="netflix-hero-btn play" onClick={() => playMovie(items[0])}>▶ Lecture</button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Section films */}
-        <div className="netflix-section">
-          <h2 className="netflix-section-title">
-            {category === 'movies' && 'Films populaires'}
-            {category === 'anime' && 'Animes populaires'}
-            {category === 'dramas' && 'Dramas populaires'}
-            {category === 'arabic' && 'Films arabes populaires'}
-          </h2>
-
-          {loading && <div className="netflix-loading">Chargement...</div>}
-          {error && <div className="netflix-error">{error}</div>}
-
-          {!loading && !error && items.length === 0 && (
-            <div className="netflix-empty">Aucun film trouvé</div>
-          )}
-
-          {items.length > 0 && (
-            <>
-              <div className="netflix-row">
-                {items.map((item) => {
-                  if (!item || !item.id) return null;
-                  const langInfo = getLanguageInfo(item.original_language);
-                  return (
-                    <div key={item.id} className="netflix-card" onClick={() => playMovie(item)}>
-                      <img src={item.image} alt={item.title} className="netflix-card-img" />
-                      <div className="netflix-card-overlay">
-                        <h3>{item.title}</h3>
-                        <p>{langInfo.flag} {langInfo.name} • {item.year || ''}</p>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-
-              {/* Pagination */}
-              {totalPages > 1 && (
-                <div className="netflix-pagination">
-                  <button onClick={() => setPage(p => Math.max(1, p-1))} disabled={page === 1}>
-                    ← Précédent
-                  </button>
-                  <span>{page} / {totalPages}</span>
-                  <button onClick={() => setPage(p => Math.min(totalPages, p+1))} disabled={page === totalPages}>
-                    Suivant →
-                  </button>
-                </div>
-              )}
-            </>
-          )}
-        </div>
+    <div>
+      <div>
+        <button onClick={() => setCategory('movies')}>Films</button>
+        <button onClick={() => setCategory('anime')}>Animes</button>
+        <button onClick={() => setCategory('dramas')}>Dramas</button>
+        <button onClick={() => setCategory('arabic')}>Arabes</button>
       </div>
-    </>
+
+      {loading && <div>Chargement...</div>}
+      {error && <div>{error}</div>}
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: '20px' }}>
+        {items.map(item => (
+          <div key={item.id} onClick={() => playMovie(item)}>
+            <img src={item.image} alt={item.title} style={{ width: '100%', height: '200px' }} />
+            <p>{item.title}</p>
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }
 
