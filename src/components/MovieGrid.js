@@ -1,132 +1,170 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState } from 'react';
+import './MovieGrid.css';
 
-// 🌐 URL de ton backend Render
 const API_URL = 'https://ley-tv.onrender.com';
 
-function MovieGrid({ hasPub, userType }) {
+function MovieGrid() {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [category, setCategory] = useState('movies'); // 'movies', 'anime', 'dramas', 'arabic'
+  const [category, setCategory] = useState('movies');
+  const [error, setError] = useState('');
+  const [selectedMovie, setSelectedMovie] = useState(null);
+  const [streamUrl, setStreamUrl] = useState('');
+  const [trailerUrl, setTrailerUrl] = useState('');
+  const [loadingTrailer, setLoadingTrailer] = useState(false);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
 
-  const fetchItems = useCallback(async () => {
-    setLoading(true);
-    try {
-      let url = '';
-      if (category === 'movies') {
-        url = `${API_URL}/api/movies/popular`;
-      } else if (category === 'anime') {
-        url = `${API_URL}/api/anime/popular`;
-      } else if (category === 'dramas') {
-        url = `${API_URL}/api/dramas/popular`;
-      } else if (category === 'arabic') {
-        url = `${API_URL}/api/arabic/popular`;
-      }
-      
-      const response = await fetch(url);
-      const data = await response.json();
-      setItems(data);
-    } catch (error) {
-      console.error('Erreur chargement:', error);
-    } finally {
-      setLoading(false);
-    }
-  }, [category]);
+  const getLanguageInfo = (langCode) => {
+    const normalizedCode = langCode === 'gb' ? 'en' : langCode;
+    const languages = {
+      'en': { flag: '🇬🇧', name: 'Anglais' },
+      'fr': { flag: '🇫🇷', name: 'Français' },
+      'ar': { flag: '🇸🇦', name: 'Arabe' },
+      'ko': { flag: '🇰🇷', name: 'Coréen' },
+      'ja': { flag: '🇯🇵', name: 'Japonais' },
+      'zh': { flag: '🇨🇳', name: 'Chinois' },
+    };
+    return languages[normalizedCode] || { flag: '🌐', name: langCode?.toUpperCase() || 'VO' };
+  };
 
   useEffect(() => {
     fetchItems();
-  }, [fetchItems]);
+  }, [category, page]);
 
-  const getButtonStyle = (cat) => ({
-    padding: '10px 20px',
-    marginRight: '10px',
-    backgroundColor: category === cat ? '#007bff' : '#f0f0f0',
-    color: category === cat ? 'white' : 'black',
-    border: 'none',
-    borderRadius: '4px',
-    cursor: 'pointer',
-    fontSize: '14px'
-  });
+  const fetchItems = async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const response = await fetch(`${API_URL}/api/${category}/popular?page=${page}`);
+      const data = await response.json();
+      
+      // 👇 Gestion robuste des données
+      let filmsArray = [];
+      if (data.films && Array.isArray(data.films)) {
+        filmsArray = data.films;
+      } else if (data.results && Array.isArray(data.results)) {
+        filmsArray = data.results;
+      } else if (Array.isArray(data)) {
+        filmsArray = data;
+      }
+      
+      setItems(filmsArray);
+      setTotalPages(data.totalPages || data.total_pages || 1);
+    } catch (error) {
+      setError('Erreur de chargement');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchTrailer = async (movieId) => {
+    setLoadingTrailer(true);
+    setTrailerUrl('');
+    try {
+      const response = await fetch(`${API_URL}/api/movies/${movieId}/videos`);
+      const data = await response.json();
+      if (data.results?.length > 0) {
+        const trailer = data.results.find(v => v.type === 'Trailer' && v.site === 'YouTube');
+        setTrailerUrl(`https://www.youtube.com/watch?v=${(trailer || data.results[0]).key}`);
+      }
+    } catch (error) {
+      console.log('Pas de bande-annonce');
+    } finally {
+      setLoadingTrailer(false);
+    }
+  };
+
+  const playMovie = (movie) => {
+    setSelectedMovie(movie);
+    setStreamUrl(`https://vidsrc.xyz/embed/movie/${movie.id}`);
+    fetchTrailer(movie.id);
+  };
+
+  const closePlayer = () => {
+    setSelectedMovie(null);
+    setStreamUrl('');
+    setTrailerUrl('');
+  };
+
+  if (selectedMovie) {
+    const langInfo = getLanguageInfo(selectedMovie.original_language);
+    return (
+      <div className="netflix-player">
+        <button className="netflix-back-btn" onClick={closePlayer}>← Retour</button>
+        <h1 className="netflix-title">{selectedMovie.title}</h1>
+        <p className="netflix-meta">
+          <span>{langInfo.flag} {langInfo.name}</span>
+          {selectedMovie.year && <span> • {selectedMovie.year}</span>}
+        </p>
+
+        {loadingTrailer && <p>Chargement...</p>}
+        {!loadingTrailer && trailerUrl && (
+          <a href={trailerUrl} target="_blank" rel="noopener noreferrer" className="netflix-trailer-btn">
+            ▶ Bande-annonce
+          </a>
+        )}
+
+        {selectedMovie.description && (
+          <div className="netflix-description">
+            <h3>Synopsis</h3>
+            <p>{selectedMovie.description}</p>
+          </div>
+        )}
+
+        <iframe src={streamUrl} className="netflix-iframe" allowFullScreen title={selectedMovie.title} />
+      </div>
+    );
+  }
 
   return (
-    <div style={{ padding: '20px' }}>
-      {/* BANDEAU DE TEST - À SUPPRIMER PLUS TARD */}
-      <div style={{ 
-        backgroundColor: 'yellow', 
-        padding: '10px', 
-        marginBottom: '20px',
-        border: '2px solid red',
-        fontWeight: 'bold'
-      }}>
-        ⚠️ VERSION DE TEST - {new Date().toLocaleString()}
+    <div className="netflix-container">
+      <h1 className="netflix-logo">LeY Tv</h1>
+      
+      <div className="netflix-categories">
+        {['movies', 'anime', 'dramas', 'arabic'].map(cat => (
+          <button
+            key={cat}
+            className={`netflix-cat-btn ${category === cat ? 'active' : ''}`}
+            onClick={() => { setCategory(cat); setPage(1); }}
+          >
+            {cat === 'movies' && 'Films'}
+            {cat === 'anime' && 'Animes'}
+            {cat === 'dramas' && 'Dramas'}
+            {cat === 'arabic' && 'Arabes'}
+          </button>
+        ))}
       </div>
 
-      <div style={{ marginBottom: '20px' }}>
-        <button 
-          onClick={() => setCategory('movies')}
-          style={getButtonStyle('movies')}
-        >
-          🎬 Films
-        </button>
-        <button 
-          onClick={() => setCategory('anime')}
-          style={getButtonStyle('anime')}
-        >
-          🎌 Animes
-        </button>
-        <button 
-          onClick={() => setCategory('dramas')}
-          style={getButtonStyle('dramas')}
-        >
-          📺 Dramas
-        </button>
-        <button 
-          onClick={() => setCategory('arabic')}
-          style={getButtonStyle('arabic')}
-        >
-          🌍 Arabes
-        </button>
-      </div>
+      {loading && <div className="netflix-loading">Chargement...</div>}
+      {error && <div className="netflix-error">{error}</div>}
 
-      {loading ? (
-        <div style={{ textAlign: 'center', padding: '50px' }}>⏳ Chargement...</div>
-      ) : (
+      {!loading && !error && items.length === 0 && (
+        <div className="netflix-empty">Aucun film</div>
+      )}
+
+      {items.length > 0 && (
         <>
-          <h2>
-            {category === 'movies' && 'Films populaires'}
-            {category === 'anime' && 'Animes populaires'}
-            {category === 'dramas' && 'Dramas populaires'}
-            {category === 'arabic' && 'Films arabes populaires'}
-          </h2>
-          {items.length === 0 ? (
-            <p>Aucun contenu trouvé</p>
-          ) : (
-            <div style={{ 
-              display: 'grid', 
-              gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', 
-              gap: '20px' 
-            }}>
-              {items.map(item => (
-                <div key={item.id} style={{ 
-                  border: '1px solid #ddd', 
-                  borderRadius: '8px',
-                  overflow: 'hidden',
-                  cursor: 'pointer'
-                }}>
-                  <img 
-                    src={item.image} 
-                    alt={item.title} 
-                    style={{ 
-                      width: '100%', 
-                      height: '250px', 
-                      objectFit: 'cover' 
-                    }} 
-                  />
-                  <div style={{ padding: '10px' }}>
-                    <h3 style={{ fontSize: '16px', margin: 0 }}>{item.title}</h3>
-                    {item.year && <p style={{ margin: '5px 0 0', color: '#666' }}>{item.year}</p>}
+          <div className="netflix-row">
+            {items.map(item => {
+              const langInfo = getLanguageInfo(item.original_language);
+              return (
+                <div key={item.id} className="netflix-card" onClick={() => playMovie(item)}>
+                  <img src={item.image} alt={item.title} className="netflix-card-img" />
+                  <div className="netflix-card-overlay">
+                    <h3>{item.title}</h3>
+                    <p>{langInfo.flag} {langInfo.name} • {item.year || ''}</p>
                   </div>
                 </div>
-              ))}
+              );
+            })}
+          </div>
+
+          {totalPages > 1 && (
+            <div className="netflix-pagination">
+              <button onClick={() => setPage(p => Math.max(1, p-1))} disabled={page === 1}>←</button>
+              <span>{page} / {totalPages}</span>
+              <button onClick={() => setPage(p => Math.min(totalPages, p+1))} disabled={page === totalPages}>→</button>
             </div>
           )}
         </>
