@@ -7,6 +7,8 @@ function MovieGrid() {
   const [loading, setLoading] = useState(true);
   const [category, setCategory] = useState('movies');
   const [error, setError] = useState('');
+  const [selectedMovie, setSelectedMovie] = useState(null);
+  const [streamUrl, setStreamUrl] = useState('');
 
   useEffect(() => {
     fetchItems();
@@ -16,38 +18,24 @@ function MovieGrid() {
     setLoading(true);
     setError('');
     try {
-      console.log(`🔍 Chargement: ${API_URL}/api/${category}/popular?page=1`);
       const response = await fetch(`${API_URL}/api/${category}/popular?page=1`);
       const data = await response.json();
-      console.log('📦 Données brutes:', data);
       
-      // Gestion de tous les formats possibles
       let filmsArray = [];
-      
       if (data.films && Array.isArray(data.films)) {
-        // Format { films: [...] }
         filmsArray = data.films;
       } else if (data.results && Array.isArray(data.results)) {
-        // Format { results: [...] } (TMDB direct)
         filmsArray = data.results;
       } else if (Array.isArray(data)) {
-        // Format direct [...]
         filmsArray = data;
-      } else if (data.data && Array.isArray(data.data)) {
-        // Format { data: [...] }
-        filmsArray = data.data;
       }
       
       if (filmsArray.length > 0) {
-        console.log(`✅ ${filmsArray.length} films trouvés`);
         setItems(filmsArray);
       } else {
-        console.log('⚠️ Aucun film dans le format attendu');
         setError('Aucun film trouvé');
-        setItems([]);
       }
     } catch (error) {
-      console.error('❌ Erreur:', error);
       setError('Erreur de chargement');
     } finally {
       setLoading(false);
@@ -55,8 +43,46 @@ function MovieGrid() {
   };
 
   const playMovie = (movie) => {
-    window.open(`https://vidsrc.to/embed/movie/${movie.id}`, '_blank');
+    setSelectedMovie(movie);
+    setStreamUrl(`https://vidsrc.to/embed/movie/${movie.id}`);
   };
+
+  const closePlayer = () => {
+    setSelectedMovie(null);
+    setStreamUrl('');
+  };
+
+  if (selectedMovie) {
+    return (
+      <div style={{ padding: '20px' }}>
+        <button 
+          onClick={closePlayer}
+          style={{
+            padding: '10px 20px',
+            marginBottom: '20px',
+            backgroundColor: '#6c757d',
+            color: 'white',
+            border: 'none',
+            borderRadius: '4px',
+            cursor: 'pointer'
+          }}
+        >
+          ← Retour aux films
+        </button>
+        
+        <h2>{selectedMovie.title}</h2>
+        
+        <iframe
+          src={streamUrl}
+          width="100%"
+          height="500"
+          style={{ border: 'none', borderRadius: '8px' }}
+          allowFullScreen
+          title={selectedMovie.title}
+        />
+      </div>
+    );
+  }
 
   return (
     <div style={{ padding: '20px' }}>
@@ -93,8 +119,8 @@ function MovieGrid() {
               }}
             >
               <img 
-                src={item.image || item.poster_path || 'https://via.placeholder.com/200x300'} 
-                alt={item.title || item.name} 
+                src={item.image} 
+                alt={item.title} 
                 style={{ 
                   width: '100%', 
                   height: '200px', 
@@ -103,7 +129,7 @@ function MovieGrid() {
                 }}
               />
               <h3 style={{ fontSize: '16px', margin: '10px 0 5px' }}>
-                {item.title || item.name}
+                {item.title}
               </h3>
               {item.year && <p style={{ margin: 0, color: '#666' }}>{item.year}</p>}
             </div>
