@@ -10,6 +10,26 @@ function MovieGrid() {
   const [selectedMovie, setSelectedMovie] = useState(null);
   const [streamUrl, setStreamUrl] = useState('');
 
+  // Fonction pour obtenir le drapeau et le nom de la langue
+  const getLanguageInfo = (langCode) => {
+    const languages = {
+      'en': { flag: '🇬🇧', name: 'Anglais' },
+      'fr': { flag: '🇫🇷', name: 'Français' },
+      'ar': { flag: '🇸🇦', name: 'Arabe' },
+      'ko': { flag: '🇰🇷', name: 'Coréen' },
+      'ja': { flag: '🇯🇵', name: 'Japonais' },
+      'zh': { flag: '🇨🇳', name: 'Chinois' },
+      'hi': { flag: '🇮🇳', name: 'Hindi' },
+      'de': { flag: '🇩🇪', name: 'Allemand' },
+      'es': { flag: '🇪🇸', name: 'Espagnol' },
+      'it': { flag: '🇮🇹', name: 'Italien' },
+      'pt': { flag: '🇵🇹', name: 'Portugais' },
+      'ru': { flag: '🇷🇺', name: 'Russe' },
+      'tr': { flag: '🇹🇷', name: 'Turc' }
+    };
+    return languages[langCode] || { flag: '🌐', name: langCode?.toUpperCase() || 'Inconnu' };
+  };
+
   useEffect(() => {
     fetchItems();
   }, [category]);
@@ -53,6 +73,7 @@ function MovieGrid() {
   };
 
   if (selectedMovie) {
+    const langInfo = getLanguageInfo(selectedMovie.original_language);
     return (
       <div style={{ padding: '20px' }}>
         <button 
@@ -71,6 +92,10 @@ function MovieGrid() {
         </button>
         
         <h2>{selectedMovie.title}</h2>
+        <p style={{ marginBottom: '20px' }}>
+          <span style={{ fontSize: '1.2rem', marginRight: '10px' }}>{langInfo.flag}</span>
+          {langInfo.name} • {selectedMovie.year || 'Année inconnue'}
+        </p>
         
         <iframe
           src={streamUrl}
@@ -106,34 +131,53 @@ function MovieGrid() {
           gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', 
           gap: '20px' 
         }}>
-          {items.map(item => (
-            <div 
-              key={item.id} 
-              onClick={() => playMovie(item)}
-              style={{ 
-                border: '1px solid #ddd', 
-                borderRadius: '8px',
-                padding: '10px', 
-                cursor: 'pointer',
-                textAlign: 'center'
-              }}
-            >
-              <img 
-                src={item.image} 
-                alt={item.title} 
+          {items.map(item => {
+            const langInfo = getLanguageInfo(item.original_language);
+            return (
+              <div 
+                key={item.id} 
+                onClick={() => playMovie(item)}
                 style={{ 
-                  width: '100%', 
-                  height: '200px', 
-                  objectFit: 'cover',
-                  borderRadius: '4px'
+                  border: '1px solid #ddd', 
+                  borderRadius: '8px',
+                  overflow: 'hidden',
+                  cursor: 'pointer',
+                  transition: 'transform 0.2s',
+                  backgroundColor: 'white'
                 }}
-              />
-              <h3 style={{ fontSize: '16px', margin: '10px 0 5px' }}>
-                {item.title}
-              </h3>
-              {item.year && <p style={{ margin: 0, color: '#666' }}>{item.year}</p>}
-            </div>
-          ))}
+              >
+                <img 
+                  src={item.image} 
+                  alt={item.title} 
+                  style={{ 
+                    width: '100%', 
+                    height: '250px', 
+                    objectFit: 'cover' 
+                  }}
+                  onError={(e) => {
+                    e.target.src = 'https://via.placeholder.com/300x450?text=Image+non+disponible';
+                  }}
+                />
+                <div style={{ padding: '12px' }}>
+                  <h3 style={{ fontSize: '16px', margin: '0 0 8px 0' }}>
+                    {item.title}
+                  </h3>
+                  <div style={{ 
+                    display: 'flex', 
+                    justifyContent: 'space-between', 
+                    alignItems: 'center',
+                    fontSize: '13px',
+                    color: '#666'
+                  }}>
+                    <span>{item.year || 'N/A'}</span>
+                    <span title={langInfo.name}>
+                      {langInfo.flag} {langInfo.name}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
         </div>
       )}
     </div>
