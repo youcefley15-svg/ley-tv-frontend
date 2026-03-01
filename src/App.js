@@ -4,9 +4,17 @@ import MovieGrid from './components/MovieGrid';
 function App() {
   return (
     <div>
-      <div style={{ padding: '10px', backgroundColor: '#f0f0f0', textAlign: 'center' }}>
-        <h1>🎬 Ley TV - Mode Test</h1>
-      </div>
+      <h1 style={{ 
+        textAlign: 'center', 
+        padding: '20px',
+        margin: 0,
+        backgroundColor: '#1a1a1a',
+        color: 'white',
+        fontSize: '2.5rem',
+        letterSpacing: '2px'
+      }}>
+        🎬 LeY Tv
+      </h1>
       <MovieGrid />
     </div>
   );
