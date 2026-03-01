@@ -19,11 +19,30 @@ function MovieGrid() {
       console.log(`🔍 Chargement: ${API_URL}/api/${category}/popular?page=1`);
       const response = await fetch(`${API_URL}/api/${category}/popular?page=1`);
       const data = await response.json();
-      console.log('📦 Données reçues:', data);
+      console.log('📦 Données brutes:', data);
       
-      if (data.films && data.films.length > 0) {
-        setItems(data.films);
+      // Gestion de tous les formats possibles
+      let filmsArray = [];
+      
+      if (data.films && Array.isArray(data.films)) {
+        // Format { films: [...] }
+        filmsArray = data.films;
+      } else if (data.results && Array.isArray(data.results)) {
+        // Format { results: [...] } (TMDB direct)
+        filmsArray = data.results;
+      } else if (Array.isArray(data)) {
+        // Format direct [...]
+        filmsArray = data;
+      } else if (data.data && Array.isArray(data.data)) {
+        // Format { data: [...] }
+        filmsArray = data.data;
+      }
+      
+      if (filmsArray.length > 0) {
+        console.log(`✅ ${filmsArray.length} films trouvés`);
+        setItems(filmsArray);
       } else {
+        console.log('⚠️ Aucun film dans le format attendu');
         setError('Aucun film trouvé');
         setItems([]);
       }
@@ -56,23 +75,37 @@ function MovieGrid() {
       )}
 
       {items.length > 0 && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '20px' }}>
+        <div style={{ 
+          display: 'grid', 
+          gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', 
+          gap: '20px' 
+        }}>
           {items.map(item => (
             <div 
               key={item.id} 
               onClick={() => playMovie(item)}
-              style={{ border: '1px solid #ddd', padding: '10px', cursor: 'pointer' }}
+              style={{ 
+                border: '1px solid #ddd', 
+                borderRadius: '8px',
+                padding: '10px', 
+                cursor: 'pointer',
+                textAlign: 'center'
+              }}
             >
               <img 
-                src={item.image} 
-                alt={item.title} 
-                style={{ width: '100%', height: '200px', objectFit: 'cover' }}
-                onError={(e) => {
-                  e.target.src = 'https://via.placeholder.com/200x300?text=Image+non+disponible';
+                src={item.image || item.poster_path || 'https://via.placeholder.com/200x300'} 
+                alt={item.title || item.name} 
+                style={{ 
+                  width: '100%', 
+                  height: '200px', 
+                  objectFit: 'cover',
+                  borderRadius: '4px'
                 }}
               />
-              <h3>{item.title}</h3>
-              {item.year && <p>{item.year}</p>}
+              <h3 style={{ fontSize: '16px', margin: '10px 0 5px' }}>
+                {item.title || item.name}
+              </h3>
+              {item.year && <p style={{ margin: 0, color: '#666' }}>{item.year}</p>}
             </div>
           ))}
         </div>
