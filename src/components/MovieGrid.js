@@ -14,28 +14,28 @@ function MovieGrid() {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
 
-  // 🌍 Fonction pour obtenir le drapeau (même sans langue)
-  const getLanguageInfo = (movie) => {
-    // Si la langue est fournie par l'API
-    if (movie.original_language) {
-      const languages = {
-        'en': '🇬🇧 Anglais', 'fr': '🇫🇷 Français', 'ar': '🇸🇦 Arabe',
-        'ko': '🇰🇷 Coréen', 'ja': '🇯🇵 Japonais', 'zh': '🇨🇳 Chinois',
-        'hi': '🇮🇳 Hindi', 'de': '🇩🇪 Allemand', 'es': '🇪🇸 Espagnol',
-        'it': '🇮🇹 Italien', 'pt': '🇵🇹 Portugais', 'ru': '🇷🇺 Russe',
-        'tr': '🇹🇷 Turc'
-      };
-      return languages[movie.original_language] || `🌐 ${movie.original_language.toUpperCase()}`;
-    }
-    
-    // Fallback basé sur la catégorie
-    const categoryFallback = {
-      'movies': '🇬🇧 Film',
-      'anime': '🇯🇵 Anime',
-      'dramas': '🇰🇷 Drama',
-      'arabic': '🇸🇦 Arabe'
+  // 🌍 Fonction de mapping des langues (corrigée)
+  const getLanguageInfo = (langCode) => {
+    // Mapping spécial pour 'gb' qui doit être traité comme 'en'
+    const normalizedCode = langCode === 'gb' ? 'en' : langCode;
+
+    const languages = {
+      'en': { flag: '🇬🇧', name: 'Anglais' },
+      'fr': { flag: '🇫🇷', name: 'Français' },
+      'ar': { flag: '🇸🇦', name: 'Arabe' },
+      'ko': { flag: '🇰🇷', name: 'Coréen' },
+      'ja': { flag: '🇯🇵', name: 'Japonais' },
+      'zh': { flag: '🇨🇳', name: 'Chinois' },
+      'hi': { flag: '🇮🇳', name: 'Hindi' },
+      'de': { flag: '🇩🇪', name: 'Allemand' },
+      'es': { flag: '🇪🇸', name: 'Espagnol' },
+      'it': { flag: '🇮🇹', name: 'Italien' },
+      'pt': { flag: '🇵🇹', name: 'Portugais' },
+      'ru': { flag: '🇷🇺', name: 'Russe' },
+      'tr': { flag: '🇹🇷', name: 'Turc' }
     };
-    return categoryFallback[category] || '🎬 Film';
+    
+    return languages[normalizedCode] || { flag: '🌐', name: langCode?.toUpperCase() || 'VO' };
   };
 
   useEffect(() => {
@@ -48,12 +48,12 @@ function MovieGrid() {
     try {
       const response = await fetch(`${API_URL}/api/${category}/popular?page=${page}`);
       const data = await response.json();
-      
+
       let filmsArray = [];
       if (data.films) filmsArray = data.films;
       else if (data.results) filmsArray = data.results;
       else if (Array.isArray(data)) filmsArray = data;
-      
+
       setItems(filmsArray);
       setTotalPages(data.totalPages || data.total_pages || 1);
     } catch (error) {
@@ -69,9 +69,16 @@ function MovieGrid() {
     try {
       const response = await fetch(`${API_URL}/api/movies/${movieId}/videos`);
       const data = await response.json();
+      
       if (data.results && data.results.length > 0) {
+        // Cherche une bande-annonce en priorité
         const trailer = data.results.find(v => v.type === 'Trailer' && v.site === 'YouTube');
-        setTrailerUrl(`https://www.youtube.com/watch?v=${(trailer || data.results[0]).key}`);
+        if (trailer) {
+          setTrailerUrl(`https://www.youtube.com/watch?v=${trailer.key}`);
+        } else {
+          // Sinon, prend la première vidéo disponible
+          setTrailerUrl(`https://www.youtube.com/watch?v=${data.results[0].key}`);
+        }
       }
     } catch (error) {
       console.log('Pas de bande-annonce');
@@ -94,25 +101,30 @@ function MovieGrid() {
 
   // Lecteur
   if (selectedMovie) {
+    const langInfo = getLanguageInfo(selectedMovie.original_language);
     return (
-      <div style={{ padding: '20px' }}>
+      <div style={styles.playerContainer}>
         <button onClick={closePlayer} style={styles.backButton}>← Retour</button>
         <h2>{selectedMovie.title}</h2>
         <p style={styles.meta}>
-          <span>{getLanguageInfo(selectedMovie)}</span>
+          <span>{langInfo.flag} {langInfo.name}</span>
           {selectedMovie.year && <span> • {selectedMovie.year}</span>}
         </p>
 
-        {loadingTrailer && <p>Chargement bande-annonce...</p>}
-        {!loadingTrailer && trailerUrl && (
-          <a href={trailerUrl} target="_blank" rel="noopener noreferrer" style={styles.trailerButton}>
-            ▶ Bande-annonce
-          </a>
-        )}
-        {!loadingTrailer && !trailerUrl && (
-          <p style={{ color: '#888' }}>Pas de bande-annonce</p>
-        )}
+        {/* Bande-annonce */}
+        <div style={styles.trailerSection}>
+          {loadingTrailer && <p>Chargement de la bande-annonce...</p>}
+          {!loadingTrailer && trailerUrl && (
+            <a href={trailerUrl} target="_blank" rel="noopener noreferrer" style={styles.trailerButton}>
+              ▶ Regarder la bande-annonce
+            </a>
+          )}
+          {!loadingTrailer && !trailerUrl && (
+            <p style={styles.noTrailer}>🎬 Aucune bande-annonce disponible</p>
+          )}
+        </div>
 
+        {/* Description */}
         {selectedMovie.description && selectedMovie.description !== "Description non disponible" && (
           <div style={styles.description}>
             <h3>Synopsis</h3>
@@ -120,14 +132,22 @@ function MovieGrid() {
           </div>
         )}
 
-        <iframe src={streamUrl} width="100%" height="500" style={styles.iframe} allowFullScreen />
+        {/* Lecteur */}
+        <iframe
+          src={streamUrl}
+          width="100%"
+          height="500"
+          style={styles.iframe}
+          allowFullScreen
+          title={selectedMovie.title}
+        />
       </div>
     );
   }
 
   // Grille
   return (
-    <div style={{ padding: '20px' }}>
+    <div style={styles.container}>
       <div style={styles.categoryRow}>
         {['movies', 'anime', 'dramas', 'arabic'].map(cat => (
           <button
@@ -147,24 +167,27 @@ function MovieGrid() {
       {error && <div style={{ ...styles.centered, color: 'red' }}>❌ {error}</div>}
 
       {!loading && !error && items.length === 0 && (
-        <div style={styles.centered}>Aucun film</div>
+        <div style={styles.centered}>Aucun film disponible</div>
       )}
 
       {items.length > 0 && (
         <>
           <div style={styles.grid}>
-            {items.map(item => (
-              <div key={item.id} onClick={() => playMovie(item)} style={styles.card}>
-                <img src={item.image} alt={item.title} style={styles.cardImage} />
-                <div style={{ padding: '12px' }}>
-                  <h3 style={styles.cardTitle}>{item.title}</h3>
-                  <div style={styles.cardMeta}>
-                    <span>{item.year || ''}</span>
-                    <span>{getLanguageInfo(item)}</span>
+            {items.map(item => {
+              const langInfo = getLanguageInfo(item.original_language);
+              return (
+                <div key={item.id} onClick={() => playMovie(item)} style={styles.card}>
+                  <img src={item.image} alt={item.title} style={styles.cardImage} />
+                  <div style={styles.cardContent}>
+                    <h3 style={styles.cardTitle}>{item.title}</h3>
+                    <div style={styles.cardMeta}>
+                      <span>{item.year || ''}</span>
+                      <span>{langInfo.flag} {langInfo.name}</span>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
 
           {totalPages > 1 && (
@@ -182,9 +205,13 @@ function MovieGrid() {
 
 // Styles
 const styles = {
+  container: { padding: '20px' },
+  playerContainer: { padding: '20px' },
   backButton: { padding: '10px 20px', marginBottom: '20px', backgroundColor: '#6c757d', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' },
   meta: { marginBottom: '15px', fontSize: '1.1rem' },
-  trailerButton: { display: 'inline-block', padding: '10px 20px', backgroundColor: '#ff0000', color: 'white', textDecoration: 'none', borderRadius: '4px', fontWeight: 'bold', marginBottom: '20px' },
+  trailerSection: { marginBottom: '20px' },
+  trailerButton: { display: 'inline-block', padding: '10px 20px', backgroundColor: '#ff0000', color: 'white', textDecoration: 'none', borderRadius: '4px', fontWeight: 'bold' },
+  noTrailer: { color: '#888', fontStyle: 'italic' },
   description: { marginBottom: '20px', padding: '15px', backgroundColor: '#f8f9fa', borderRadius: '8px', lineHeight: '1.6' },
   iframe: { border: 'none', borderRadius: '8px' },
   categoryRow: { marginBottom: '20px', display: 'flex', gap: '10px', flexWrap: 'wrap' },
@@ -192,6 +219,7 @@ const styles = {
   grid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '20px' },
   card: { border: '1px solid #ddd', borderRadius: '8px', overflow: 'hidden', cursor: 'pointer', backgroundColor: 'white', boxShadow: '0 2px 5px rgba(0,0,0,0.1)' },
   cardImage: { width: '100%', height: '250px', objectFit: 'cover' },
+  cardContent: { padding: '12px' },
   cardTitle: { fontSize: '16px', margin: '0 0 8px 0' },
   cardMeta: { display: 'flex', justifyContent: 'space-between', fontSize: '13px', color: '#666' },
   pagination: { marginTop: '30px', textAlign: 'center', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '15px' }
