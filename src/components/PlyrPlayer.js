@@ -1,5 +1,4 @@
 import React, { useEffect, useRef } from 'react';
-import 'plyr/dist/plyr.css';
 
 // Charger Plyr uniquement côté client
 const loadPlyr = async () => {
@@ -13,6 +12,12 @@ const PlyrPlayer = ({ movie, onClose }) => {
 
   useEffect(() => {
     let mounted = true;
+
+    // Ajouter le CSS Plyr depuis le CDN
+    const link = document.createElement('link');
+    link.rel = 'stylesheet';
+    link.href = 'https://cdn.plyr.io/3.7.8/plyr.css';
+    document.head.appendChild(link);
 
     const initPlayer = async () => {
       if (!playerRef.current || !mounted) return;
@@ -77,6 +82,7 @@ const PlyrPlayer = ({ movie, onClose }) => {
       if (playerInstance.current) {
         playerInstance.current.destroy();
       }
+      document.head.removeChild(link);
     };
   }, [movie.id]);
 
