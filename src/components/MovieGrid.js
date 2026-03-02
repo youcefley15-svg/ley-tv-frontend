@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import PlyrPlayer from './PlyrPlayer';
+// Plyr temporairement désactivé
+// import PlyrPlayer from './PlyrPlayer';
 
 const API_URL = 'https://ley-tv.onrender.com';
 
@@ -174,9 +175,48 @@ function MovieGrid() {
     setPage(1);
   };
 
-  // Utiliser PlyrPlayer quand un film est sélectionné
+  // Lecteur simple (sans Plyr) quand un film est sélectionné
   if (selectedMovie) {
-    return <PlyrPlayer movie={selectedMovie} onClose={closePlayer} />;
+    const langInfo = getLanguageInfo(selectedMovie.original_language);
+    return (
+      <div style={{
+        minHeight: '100vh',
+        background: '#141414',
+        color: 'white',
+        padding: '20px'
+      }}>
+        <button
+          onClick={closePlayer}
+          style={{
+            padding: '10px 20px',
+            background: '#e50914',
+            color: 'white',
+            border: 'none',
+            borderRadius: '4px',
+            cursor: 'pointer',
+            marginBottom: '20px',
+            fontSize: '1rem'
+          }}
+        >
+          ← Retour
+        </button>
+        
+        <h1 style={{ fontSize: '2rem', marginBottom: '10px' }}>{selectedMovie.title}</h1>
+        <p style={{ marginBottom: '20px', color: '#ccc' }}>
+          {langInfo.flag} {langInfo.name} • {selectedMovie.year || ''}
+          {selectedMovie.rating && <span> • ⭐ {selectedMovie.rating.toFixed(1)}</span>}
+        </p>
+
+        <iframe
+          src={`https://vidsrc.xyz/embed/movie/${selectedMovie.id}`}
+          width="100%"
+          height="600"
+          style={{ border: 'none', borderRadius: '8px' }}
+          allowFullScreen
+          title={selectedMovie.title}
+        />
+      </div>
+    );
   }
 
   return (
