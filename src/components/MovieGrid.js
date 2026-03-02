@@ -20,6 +20,13 @@ function MovieGrid() {
   const [totalPages, setTotalPages] = useState(1);
   const [scrolled, setScrolled] = useState(false);
 
+  // TEST : Forcer le fond rouge pour vérifier que le CSS fonctionne
+  useEffect(() => {
+    document.body.style.backgroundColor = '#ff0000';
+    document.body.style.margin = '0';
+    document.body.style.padding = '0';
+  }, []);
+
   // Détection du scroll
   useEffect(() => {
     const handleScroll = () => {
@@ -543,10 +550,34 @@ function MovieGrid() {
       <header style={styles.header}>
         <span style={styles.logo}>LeY Tv</span>
         <nav style={styles.nav}>
-          <a href="#" style={{...styles.navLink, ...(category === 'movies' && !selectedGenre ? styles.navLinkActive : {})}} onClick={(e) => { e.preventDefault(); handleCategoryChange('movies'); }}>Films</a>
-          <a href="#" style={{...styles.navLink, ...(category === 'anime' ? styles.navLinkActive : {})}} onClick={(e) => { e.preventDefault(); handleCategoryChange('anime'); }}>Animes</a>
-          <a href="#" style={{...styles.navLink, ...(category === 'dramas' ? styles.navLinkActive : {})}} onClick={(e) => { e.preventDefault(); handleCategoryChange('dramas'); }}>Dramas</a>
-          <a href="#" style={{...styles.navLink, ...(category === 'arabic' ? styles.navLinkActive : {})}} onClick={(e) => { e.preventDefault(); handleCategoryChange('arabic'); }}>Arabes</a>
+          <a 
+            href="#" 
+            style={{...styles.navLink, ...(category === 'movies' && !selectedGenre ? styles.navLinkActive : {})}} 
+            onClick={(e) => { e.preventDefault(); handleCategoryChange('movies'); }}
+          >
+            Films
+          </a>
+          <a 
+            href="#" 
+            style={{...styles.navLink, ...(category === 'anime' ? styles.navLinkActive : {})}} 
+            onClick={(e) => { e.preventDefault(); handleCategoryChange('anime'); }}
+          >
+            Animes
+          </a>
+          <a 
+            href="#" 
+            style={{...styles.navLink, ...(category === 'dramas' ? styles.navLinkActive : {})}} 
+            onClick={(e) => { e.preventDefault(); handleCategoryChange('dramas'); }}
+          >
+            Dramas
+          </a>
+          <a 
+            href="#" 
+            style={{...styles.navLink, ...(category === 'arabic' ? styles.navLinkActive : {})}} 
+            onClick={(e) => { e.preventDefault(); handleCategoryChange('arabic'); }}
+          >
+            Arabes
+          </a>
         </nav>
       </header>
 
@@ -570,10 +601,30 @@ function MovieGrid() {
         {/* Filtres pour les films */}
         {category === 'movies' && !searchQuery && !selectedGenre && (
           <div style={styles.filterContainer}>
-            <button onClick={() => setFilter('popular')} style={{...styles.filterBtn, ...(filter === 'popular' ? styles.filterBtnActive : {})}}>Populaires</button>
-            <button onClick={() => setFilter('trending')} style={{...styles.filterBtn, ...(filter === 'trending' ? styles.filterBtnActive : {})}}>Tendances</button>
-            <button onClick={() => setFilter('top_rated')} style={{...styles.filterBtn, ...(filter === 'top_rated' ? styles.filterBtnActive : {})}}>Mieux notés</button>
-            <button onClick={() => setFilter('upcoming')} style={{...styles.filterBtn, ...(filter === 'upcoming' ? styles.filterBtnActive : {})}}>À venir</button>
+            <button 
+              onClick={() => setFilter('popular')} 
+              style={{...styles.filterBtn, ...(filter === 'popular' ? styles.filterBtnActive : {})}}
+            >
+              Populaires
+            </button>
+            <button 
+              onClick={() => setFilter('trending')} 
+              style={{...styles.filterBtn, ...(filter === 'trending' ? styles.filterBtnActive : {})}}
+            >
+              Tendances
+            </button>
+            <button 
+              onClick={() => setFilter('top_rated')} 
+              style={{...styles.filterBtn, ...(filter === 'top_rated' ? styles.filterBtnActive : {})}}
+            >
+              Mieux notés
+            </button>
+            <button 
+              onClick={() => setFilter('upcoming')} 
+              style={{...styles.filterBtn, ...(filter === 'upcoming' ? styles.filterBtnActive : {})}}
+            >
+              À venir
+            </button>
           </div>
         )}
 
@@ -628,16 +679,16 @@ function MovieGrid() {
                       onMouseEnter={(e) => {
                         e.currentTarget.style.transform = 'scale(1.05)';
                         e.currentTarget.style.zIndex = '10';
-                        e.currentTarget.querySelector('.card-overlay').style.opacity = '1';
+                        e.currentTarget.querySelector('div:last-child').style.opacity = '1';
                       }}
                       onMouseLeave={(e) => {
                         e.currentTarget.style.transform = 'scale(1)';
                         e.currentTarget.style.zIndex = '1';
-                        e.currentTarget.querySelector('.card-overlay').style.opacity = '0';
+                        e.currentTarget.querySelector('div:last-child').style.opacity = '0';
                       }}
                     >
                       <img src={item.image} alt={item.title} style={styles.cardImage} />
-                      <div className="card-overlay" style={styles.cardOverlay}>
+                      <div style={styles.cardOverlay}>
                         <h3 style={styles.cardTitle}>{item.title}</h3>
                         <p style={styles.cardMeta}>
                           {langInfo.flag} {langInfo.name} • {item.year || ''}
