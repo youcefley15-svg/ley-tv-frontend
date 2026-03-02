@@ -1,6 +1,12 @@
 {
-  "buildCommand": "npm run build",
-  "outputDirectory": "build",
-  "devCommand": "npm start",
-  "installCommand": "npm install"
+  "builds": [
+    {
+      "src": "package.json",
+      "use": "@vercel/static-build",
+      "config": {
+        "installCommand": "npm install --force",
+        "buildCommand": "DISABLE_ESLINT_PLUGIN=true npm run build"
+      }
+    }
+  ]
 }

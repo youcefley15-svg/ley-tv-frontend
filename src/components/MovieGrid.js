@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import './MovieGrid.css';
+import NetflixPlayer from './NetflixPlayer';
 
 const API_URL = 'https://ley-tv.onrender.com';
 
@@ -7,21 +7,16 @@ function MovieGrid() {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [category, setCategory] = useState('movies');
-  const [filter, setFilter] = useState('popular'); // popular, trending, top_rated, upcoming
+  const [filter, setFilter] = useState('popular');
   const [genres, setGenres] = useState([]);
   const [selectedGenre, setSelectedGenre] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const [searchResults, setSearchResults] = useState(null);
   const [error, setError] = useState('');
   const [selectedMovie, setSelectedMovie] = useState(null);
-  const [streamUrl, setStreamUrl] = useState('');
-  const [trailerUrl, setTrailerUrl] = useState('');
-  const [loadingTrailer, setLoadingTrailer] = useState(false);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [scrolled, setScrolled] = useState(false);
 
-  // Détection du scroll
   useEffect(() => {
     const handleScroll = () => {
       setScrolled(window.scrollY > 50);
@@ -30,7 +25,6 @@ function MovieGrid() {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  // Charger les genres au démarrage
   useEffect(() => {
     fetchGenres();
   }, []);
@@ -70,14 +64,14 @@ function MovieGrid() {
 
   const fetchItems = async () => {
     setLoading(true);
-    setSearchResults(null);
+    setError('');
     try {
       let endpoint = '';
       
       if (category === 'movies') {
         switch(filter) {
           case 'trending':
-            endpoint = `${API_URL}/api/movies/trending?timeWindow=day`;
+            endpoint = `${API_URL}/api/movies/trending?timeWindow=day&page=${page}`;
             break;
           case 'top_rated':
             endpoint = `${API_URL}/api/movies/top-rated?page=${page}`;
@@ -95,8 +89,13 @@ function MovieGrid() {
       const response = await fetch(endpoint);
       const data = await response.json();
       
-      setItems(data.films || []);
-      setTotalPages(data.totalPages || 1);
+      if (data.films) {
+        setItems(data.films);
+        setTotalPages(data.totalPages || 1);
+      } else {
+        setItems([]);
+        setError('Aucun film trouvé');
+      }
     } catch (error) {
       setError('Erreur de chargement');
     } finally {
@@ -106,12 +105,17 @@ function MovieGrid() {
 
   const searchMovies = async () => {
     setLoading(true);
+    setError('');
     try {
       const response = await fetch(`${API_URL}/api/movies/search?query=${encodeURIComponent(searchQuery)}&page=${page}`);
       const data = await response.json();
-      setSearchResults(data.films);
-      setItems(data.films || []);
-      setTotalPages(data.totalPages || 1);
+      if (data.films) {
+        setItems(data.films);
+        setTotalPages(data.totalPages || 1);
+      } else {
+        setItems([]);
+        setError('Aucun résultat');
+      }
     } catch (error) {
       setError('Erreur de recherche');
     } finally {
@@ -121,10 +125,17 @@ function MovieGrid() {
 
   const fetchByGenre = async () => {
     setLoading(true);
+    setError('');
     try {
       const response = await fetch(`${API_URL}/api/movies/genre/${selectedGenre}?page=${page}`);
       const data = await response.json();
-      setItems(data.films || []);
+      if (data.films) {
+        setItems(data.films);
+        setTotalPages(data.totalPages || 1);
+      } else {
+        setItems([]);
+        setError('Aucun film dans ce genre');
+      }
     } catch (error) {
       setError('Erreur de chargement');
     } finally {
@@ -132,34 +143,12 @@ function MovieGrid() {
     }
   };
 
-  const fetchTrailer = async (movieId) => {
-    setLoadingTrailer(true);
-    try {
-      const response = await fetch(`${API_URL}/api/movies/${movieId}/videos`);
-      const data = await response.json();
-      if (data.results && data.results.length > 0) {
-        const trailer = data.results.find(v => v.type === 'Trailer');
-        if (trailer) {
-          setTrailerUrl(`https://www.youtube.com/watch?v=${trailer.key}`);
-        }
-      }
-    } catch (error) {
-      console.log('Pas de trailer');
-    } finally {
-      setLoadingTrailer(false);
-    }
-  };
-
-  const playMovie = async (movie) => {
+  const playMovie = (movie) => {
     setSelectedMovie(movie);
-    setStreamUrl(`https://vidsrc.xyz/embed/movie/${movie.id}`);
-    await fetchTrailer(movie.id);
   };
 
   const closePlayer = () => {
     setSelectedMovie(null);
-    setStreamUrl('');
-    setTrailerUrl('');
   };
 
   const handleSearch = (e) => {
@@ -174,52 +163,69 @@ function MovieGrid() {
     setSelectedGenre(genreId);
     setFilter(null);
     setPage(1);
+    setSearchQuery('');
   };
 
-  // Lecteur
-  if (selectedMovie) {
-    const langInfo = getLanguageInfo(selectedMovie.original_language);
-    return (
-      <div className="netflix-player">
-        <button className="netflix-back-btn" onClick={closePlayer}>← Retour</button>
-        <h1 className="netflix-player-title">{selectedMovie.title}</h1>
-        <p className="netflix-player-meta">
-          <span>{langInfo.flag} {langInfo.name}</span>
-          {selectedMovie.year && <span> • {selectedMovie.year}</span>}
-          {selectedMovie.rating && <span> • ⭐ {selectedMovie.rating.toFixed(1)}</span>}
-        </p>
-        
-        {loadingTrailer && <p>Chargement...</p>}
-        {!loadingTrailer && trailerUrl && (
-          <div style={{ marginBottom: '20px' }}>
-            <a href={trailerUrl} target="_blank" rel="noopener noreferrer" className="netflix-hero-btn play">
-              ▶ Bande-annonce
-            </a>
-          </div>
-        )}
+  const handleCategoryChange = (newCategory) => {
+    setCategory(newCategory);
+    setSelectedGenre(null);
+    setFilter('popular');
+    setSearchQuery('');
+    setPage(1);
+  };
 
-        <iframe
-          src={streamUrl}
-          className="netflix-player-iframe"
-          allowFullScreen
-          title={selectedMovie.title}
-        />
-      </div>
-    );
+  // Afficher le lecteur si un film est sélectionné
+  if (selectedMovie) {
+    return <NetflixPlayer movie={selectedMovie} onClose={closePlayer} />;
   }
 
   return (
-    <>
-      <header className={`netflix-header ${scrolled ? 'scrolled' : ''}`}>
-        <span className="netflix-logo">LeY Tv</span>
-        <nav className="netflix-nav">
-          <a href="#" onClick={(e) => { e.preventDefault(); setCategory('movies'); setSelectedGenre(null); setFilter('popular'); }} className={category === 'movies' && !selectedGenre ? 'active' : ''}>Films</a>
-          <a href="#" onClick={(e) => { e.preventDefault(); setCategory('anime'); setSelectedGenre(null); }} className={category === 'anime' ? 'active' : ''}>Animes</a>
-          <a href="#" onClick={(e) => { e.preventDefault(); setCategory('dramas'); setSelectedGenre(null); }} className={category === 'dramas' ? 'active' : ''}>Dramas</a>
-          <a href="#" onClick={(e) => { e.preventDefault(); setCategory('arabic'); setSelectedGenre(null); }} className={category === 'arabic' ? 'active' : ''}>Arabes</a>
+    <div style={{ minHeight: '100vh', background: '#141414', color: 'white' }}>
+      {/* Header */}
+      <header style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        height: '68px',
+        background: scrolled ? '#141414' : 'linear-gradient(180deg, rgba(0,0,0,0.8) 0%, transparent)',
+        display: 'flex',
+        alignItems: 'center',
+        padding: '0 60px',
+        zIndex: 1000,
+        transition: 'background 0.3s'
+      }}>
+        <span style={{ color: '#e50914', fontSize: '1.8rem', fontWeight: 'bold', marginRight: '40px', cursor: 'pointer' }}>
+          LeY Tv
+        </span>
+        <nav style={{ display: 'flex', gap: '20px' }}>
+          {[
+            { id: 'movies', label: 'Films' },
+            { id: 'anime', label: 'Animes' },
+            { id: 'dramas', label: 'Dramas' },
+            { id: 'arabic', label: 'Arabes' }
+          ].map(cat => (
+            <a
+              key={cat.id}
+              href="#"
+              onClick={(e) => { e.preventDefault(); handleCategoryChange(cat.id); }}
+              style={{
+                color: category === cat.id ? 'white' : '#e5e5e5',
+                textDecoration: 'none',
+                fontSize: '0.9rem',
+                fontWeight: category === cat.id ? 600 : 400,
+                borderBottom: category === cat.id ? '2px solid #e50914' : 'none',
+                paddingBottom: '4px',
+                transition: 'color 0.3s'
+              }}
+            >
+              {cat.label}
+            </a>
+          ))}
         </nav>
       </header>
 
+      {/* Contenu principal */}
       <div style={{ paddingTop: '70px' }}>
         {/* Barre de recherche */}
         <div style={{ padding: '20px 60px' }}>
@@ -231,26 +237,25 @@ function MovieGrid() {
               placeholder="Rechercher un film..."
               style={{
                 flex: 1,
-                padding: '12px',
+                padding: '12px 15px',
                 background: '#333',
                 border: 'none',
                 borderRadius: '4px',
                 color: 'white',
-                fontSize: '1rem'
+                fontSize: '1rem',
+                outline: 'none'
               }}
             />
-            <button
-              type="submit"
-              style={{
-                padding: '12px 30px',
-                background: '#e50914',
-                color: 'white',
-                border: 'none',
-                borderRadius: '4px',
-                cursor: 'pointer',
-                fontWeight: 'bold'
-              }}
-            >
+            <button type="submit" style={{
+              padding: '12px 30px',
+              background: '#e50914',
+              color: 'white',
+              border: 'none',
+              borderRadius: '4px',
+              cursor: 'pointer',
+              fontWeight: 'bold',
+              transition: 'background 0.3s'
+            }}>
               Rechercher
             </button>
           </form>
@@ -259,16 +264,40 @@ function MovieGrid() {
         {/* Filtres pour les films */}
         {category === 'movies' && !searchQuery && !selectedGenre && (
           <div style={{ padding: '0 60px 20px', display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-            <button onClick={() => setFilter('popular')} className={`netflix-filter-btn ${filter === 'popular' ? 'active' : ''}`}>Populaires</button>
-            <button onClick={() => setFilter('trending')} className={`netflix-filter-btn ${filter === 'trending' ? 'active' : ''}`}>Tendances</button>
-            <button onClick={() => setFilter('top_rated')} className={`netflix-filter-btn ${filter === 'top_rated' ? 'active' : ''}`}>Mieux notés</button>
-            <button onClick={() => setFilter('upcoming')} className={`netflix-filter-btn ${filter === 'upcoming' ? 'active' : ''}`}>À venir</button>
+            {[
+              { id: 'popular', label: 'Populaires' },
+              { id: 'trending', label: 'Tendances' },
+              { id: 'top_rated', label: 'Mieux notés' },
+              { id: 'upcoming', label: 'À venir' }
+            ].map(f => (
+              <button
+                key={f.id}
+                onClick={() => setFilter(f.id)}
+                style={{
+                  padding: '8px 20px',
+                  background: filter === f.id ? '#e50914' : '#333',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '20px',
+                  cursor: 'pointer',
+                  transition: 'all 0.3s'
+                }}
+              >
+                {f.label}
+              </button>
+            ))}
           </div>
         )}
 
         {/* Sélecteur de genres */}
         {category === 'movies' && !searchQuery && genres.length > 0 && (
-          <div style={{ padding: '0 60px 20px', overflowX: 'auto', whiteSpace: 'nowrap' }}>
+          <div style={{
+            padding: '0 60px 20px',
+            overflowX: 'auto',
+            whiteSpace: 'nowrap',
+            scrollbarWidth: 'thin',
+            scrollbarColor: '#e50914 #333'
+          }}>
             {genres.map(genre => (
               <button
                 key={genre.id}
@@ -281,7 +310,8 @@ function MovieGrid() {
                   border: 'none',
                   borderRadius: '20px',
                   cursor: 'pointer',
-                  display: 'inline-block'
+                  display: 'inline-block',
+                  transition: 'all 0.3s'
                 }}
               >
                 {genre.name}
@@ -291,8 +321,8 @@ function MovieGrid() {
         )}
 
         {/* Section films */}
-        <div className="netflix-section">
-          <h2 className="netflix-section-title">
+        <div style={{ padding: '0 60px', marginBottom: '50px' }}>
+          <h2 style={{ fontSize: '1.5rem', fontWeight: 500, marginBottom: '20px' }}>
             {searchQuery ? `Résultats pour "${searchQuery}"` : 
              selectedGenre ? genres.find(g => g.id === selectedGenre)?.name :
              category === 'movies' ? 
@@ -305,25 +335,72 @@ function MovieGrid() {
              'Films arabes populaires'}
           </h2>
 
-          {loading && <div className="netflix-loading">Chargement...</div>}
-          {error && <div className="netflix-error">{error}</div>}
+          {loading && <div style={{ textAlign: 'center', padding: '100px 0', color: '#e50914' }}>Chargement...</div>}
+          {error && <div style={{ textAlign: 'center', padding: '100px 0', color: '#e50914' }}>{error}</div>}
 
           {!loading && !error && items.length === 0 && (
-            <div className="netflix-empty">Aucun film trouvé</div>
+            <div style={{ textAlign: 'center', padding: '100px 0', color: '#666' }}>Aucun film trouvé</div>
           )}
 
           {items.length > 0 && (
             <>
-              <div className="netflix-row">
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))',
+                gap: '8px'
+              }}>
                 {items.map((item) => {
                   if (!item || !item.id) return null;
                   const langInfo = getLanguageInfo(item.original_language);
                   return (
-                    <div key={item.id} className="netflix-card" onClick={() => playMovie(item)}>
-                      <img src={item.image} alt={item.title} className="netflix-card-img" />
-                      <div className="netflix-card-overlay">
-                        <h3>{item.title}</h3>
-                        <p>
+                    <div
+                      key={item.id}
+                      onClick={() => playMovie(item)}
+                      style={{
+                        position: 'relative',
+                        borderRadius: '4px',
+                        overflow: 'hidden',
+                        cursor: 'pointer',
+                        aspectRatio: '2/3',
+                        transition: 'transform 0.3s',
+                        transformOrigin: 'center'
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.transform = 'scale(1.05)';
+                        e.currentTarget.style.zIndex = '10';
+                        e.currentTarget.style.boxShadow = '0 20px 40px rgba(0,0,0,0.5)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.transform = 'scale(1)';
+                        e.currentTarget.style.zIndex = '1';
+                        e.currentTarget.style.boxShadow = 'none';
+                      }}
+                    >
+                      <img
+                        src={item.image}
+                        alt={item.title}
+                        style={{
+                          width: '100%',
+                          height: '100%',
+                          objectFit: 'cover',
+                          transition: 'transform 0.3s'
+                        }}
+                      />
+                      <div style={{
+                        position: 'absolute',
+                        bottom: 0,
+                        left: 0,
+                        right: 0,
+                        background: 'linear-gradient(to top, rgba(0,0,0,0.9), transparent)',
+                        padding: '30px 10px 15px',
+                        opacity: 0,
+                        transition: 'opacity 0.3s'
+                      }}
+                      className="card-overlay">
+                        <h3 style={{ margin: '0 0 5px', fontSize: '0.9rem', fontWeight: 600, color: 'white' }}>
+                          {item.title}
+                        </h3>
+                        <p style={{ margin: 0, fontSize: '0.8rem', color: '#ccc' }}>
                           {langInfo.flag} {langInfo.name} • {item.year || ''}
                           {item.rating && <span> • ⭐ {item.rating.toFixed(1)}</span>}
                         </p>
@@ -333,13 +410,40 @@ function MovieGrid() {
                 })}
               </div>
 
+              {/* Pagination */}
               {totalPages > 1 && (
-                <div className="netflix-pagination">
-                  <button onClick={() => setPage(p => Math.max(1, p-1))} disabled={page === 1}>
+                <div style={{ display: 'flex', justifyContent: 'center', gap: '20px', margin: '50px 0' }}>
+                  <button
+                    onClick={() => setPage(p => Math.max(1, p-1))}
+                    disabled={page === 1}
+                    style={{
+                      padding: '10px 25px',
+                      background: '#333',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '4px',
+                      cursor: page === 1 ? 'not-allowed' : 'pointer',
+                      opacity: page === 1 ? 0.3 : 1,
+                      transition: 'all 0.3s'
+                    }}
+                  >
                     ← Précédent
                   </button>
-                  <span>{page} / {totalPages}</span>
-                  <button onClick={() => setPage(p => Math.min(totalPages, p+1))} disabled={page === totalPages}>
+                  <span style={{ color: '#ccc', fontSize: '1.1rem' }}>{page} / {totalPages}</span>
+                  <button
+                    onClick={() => setPage(p => Math.min(totalPages, p+1))}
+                    disabled={page === totalPages}
+                    style={{
+                      padding: '10px 25px',
+                      background: '#333',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '4px',
+                      cursor: page === totalPages ? 'not-allowed' : 'pointer',
+                      opacity: page === totalPages ? 0.3 : 1,
+                      transition: 'all 0.3s'
+                    }}
+                  >
                     Suivant →
                   </button>
                 </div>
@@ -348,32 +452,7 @@ function MovieGrid() {
           )}
         </div>
       </div>
-
-      {/* Navigation en bas */}
-      <nav className="netflix-bottom-nav">
-        <a href="#" onClick={(e) => { e.preventDefault(); setSearchQuery(''); setSelectedGenre(null); setFilter('popular'); }} className="active">Accueil</a>
-        <a href="#" onClick={(e) => { e.preventDefault(); setFilter('upcoming'); }}>Tout nouveau</a>
-        <a href="#">Mon Netflix</a>
-      </nav>
-
-      {/* Style pour les filtres */}
-      <style>{`
-        .netflix-filter-btn {
-          padding: 8px 20px;
-          background: #333;
-          color: white;
-          border: none;
-          border-radius: 20px;
-          cursor: pointer;
-          font-size: 0.9rem;
-          transition: all 0.3s;
-        }
-        .netflix-filter-btn:hover,
-        .netflix-filter-btn.active {
-          background: #e50914;
-        }
-      `}</style>
-    </>
+    </div>
   );
 }
 
