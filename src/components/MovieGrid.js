@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import './MovieGrid.css';  // ← IMPORTANT !
 
 const API_URL = 'https://ley-tv.onrender.com';
 
@@ -37,7 +38,6 @@ function MovieGrid() {
 
   const fetchTrailer = async (movieId) => {
     setLoadingTrailer(true);
-    setTrailerUrl('');
     try {
       const response = await fetch(`${API_URL}/api/movies/${movieId}/videos`);
       const data = await response.json();
@@ -68,26 +68,14 @@ function MovieGrid() {
 
   if (selectedMovie) {
     return (
-      <div style={{ padding: '20px' }}>
-        <button onClick={closePlayer}>← Retour</button>
-        <h2>{selectedMovie.title}</h2>
+      <div className="netflix-player">
+        <button className="netflix-back-btn" onClick={closePlayer}>← Retour</button>
+        <h1 className="netflix-player-title">{selectedMovie.title}</h1>
         
-        {loadingTrailer && <p>Chargement bande-annonce...</p>}
+        {loadingTrailer && <p>Chargement...</p>}
         {!loadingTrailer && trailerUrl && (
           <div style={{ marginBottom: '20px' }}>
-            <a 
-              href={trailerUrl} 
-              target="_blank" 
-              rel="noopener noreferrer"
-              style={{
-                display: 'inline-block',
-                padding: '10px 20px',
-                background: '#e50914',
-                color: 'white',
-                textDecoration: 'none',
-                borderRadius: '4px'
-              }}
-            >
+            <a href={trailerUrl} target="_blank" rel="noopener noreferrer" className="netflix-hero-btn play">
               ▶ Bande-annonce
             </a>
           </div>
@@ -95,8 +83,7 @@ function MovieGrid() {
 
         <iframe
           src={streamUrl}
-          width="100%"
-          height="500"
+          className="netflix-player-iframe"
           allowFullScreen
           title={selectedMovie.title}
         />
@@ -105,32 +92,67 @@ function MovieGrid() {
   }
 
   return (
-    <div style={{ padding: '20px' }}>
-      <div>
-        <button onClick={() => setCategory('movies')}>Films</button>
-        <button onClick={() => setCategory('anime')}>Animes</button>
-        <button onClick={() => setCategory('dramas')}>Dramas</button>
-        <button onClick={() => setCategory('arabic')}>Arabes</button>
-      </div>
+    <>
+      <header className="netflix-header">
+        <span className="netflix-logo">LeY Tv</span>
+        <nav className="netflix-nav">
+          <a href="#" onClick={(e) => { e.preventDefault(); setCategory('movies'); }} className={category === 'movies' ? 'active' : ''}>Films</a>
+          <a href="#" onClick={(e) => { e.preventDefault(); setCategory('anime'); }} className={category === 'anime' ? 'active' : ''}>Animes</a>
+          <a href="#" onClick={(e) => { e.preventDefault(); setCategory('dramas'); }} className={category === 'dramas' ? 'active' : ''}>Dramas</a>
+          <a href="#" onClick={(e) => { e.preventDefault(); setCategory('arabic'); }} className={category === 'arabic' ? 'active' : ''}>Arabes</a>
+        </nav>
+      </header>
 
-      <div>
-        <button onClick={() => setPage(p => Math.max(1, p-1))} disabled={page === 1}>←</button>
-        <span>Page {page}</span>
-        <button onClick={() => setPage(p => Math.min(totalPages, p+1))} disabled={page === totalPages}>→</button>
-      </div>
-
-      {loading && <div>Chargement...</div>}
-      {error && <div>{error}</div>}
-
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: '20px' }}>
-        {items.map(item => (
-          <div key={item.id} onClick={() => playMovie(item)} style={{ cursor: 'pointer' }}>
-            <img src={item.image} alt={item.title} style={{ width: '100%', height: '200px' }} />
-            <p>{item.title}</p>
+      {/* Hero banner avec le premier film */}
+      {!loading && items.length > 0 && (
+        <div 
+          className="netflix-hero" 
+          style={{ backgroundImage: `url(${items[0]?.image})` }}
+        >
+          <div className="netflix-hero-content">
+            <h1 className="netflix-hero-title">{items[0]?.title}</h1>
+            <p className="netflix-hero-description">{items[0]?.description}</p>
+            <div className="netflix-hero-buttons">
+              <button className="netflix-hero-btn play" onClick={() => playMovie(items[0])}>▶ Lecture</button>
+              <button className="netflix-hero-btn info">ℹ Plus d'infos</button>
+            </div>
           </div>
-        ))}
+        </div>
+      )}
+
+      <div className="netflix-row-custom">
+        <h2>Pour vous</h2>
+        <div className="netflix-row">
+          {items.slice(1, 7).map(item => (
+            <div key={item.id} className="netflix-card" onClick={() => playMovie(item)}>
+              <img src={item.image} alt={item.title} className="netflix-card-img" />
+              <div className="netflix-card-overlay">
+                <h3>{item.title}</h3>
+                <p>Regarder maintenant</p>
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
-    </div>
+
+      <div className="netflix-section">
+        <h2 className="netflix-section-title">Notre sélection du jour</h2>
+        <div className="netflix-row">
+          {items.slice(7, 13).map(item => (
+            <div key={item.id} className="netflix-card" onClick={() => playMovie(item)}>
+              <img src={item.image} alt={item.title} className="netflix-card-img" />
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Navigation en bas */}
+      <nav className="netflix-bottom-nav">
+        <a href="#" className="active">Accueil</a>
+        <a href="#">Tout nouveau</a>
+        <a href="#">Mon Netflix</a>
+      </nav>
+    </>
   );
 }
 
