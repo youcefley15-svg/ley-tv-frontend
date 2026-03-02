@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
-// Importer Plyr correctement
-import Plyr from 'plyr/dist/plyr';
+// Correction du chemin d'importation Plyr
+import Plyr from 'plyr';
 import 'plyr/dist/plyr.css';
 
 const NetflixPlayer = ({ movie, onClose }) => {
