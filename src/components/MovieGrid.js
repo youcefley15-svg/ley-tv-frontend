@@ -7,7 +7,7 @@ function MovieGrid() {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [category, setCategory] = useState('movies');
-  const [filter, setFilter] = useState('popular'); // popular, trending, top_rated, upcoming
+  const [filter, setFilter] = useState('popular');
   const [genres, setGenres] = useState([]);
   const [selectedGenre, setSelectedGenre] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -71,13 +71,14 @@ function MovieGrid() {
   const fetchItems = async () => {
     setLoading(true);
     setSearchResults(null);
+    setError('');
     try {
       let endpoint = '';
       
       if (category === 'movies') {
         switch(filter) {
           case 'trending':
-            endpoint = `${API_URL}/api/movies/trending?timeWindow=day`;
+            endpoint = `${API_URL}/api/movies/trending?timeWindow=day&page=${page}`;
             break;
           case 'top_rated':
             endpoint = `${API_URL}/api/movies/top-rated?page=${page}`;
@@ -95,9 +96,15 @@ function MovieGrid() {
       const response = await fetch(endpoint);
       const data = await response.json();
       
-      setItems(data.films || []);
-      setTotalPages(data.totalPages || 1);
+      if (data.films) {
+        setItems(data.films);
+        setTotalPages(data.totalPages || 1);
+      } else {
+        setItems([]);
+        setError('Aucun film trouvé');
+      }
     } catch (error) {
+      console.error('Erreur:', error);
       setError('Erreur de chargement');
     } finally {
       setLoading(false);
@@ -106,13 +113,21 @@ function MovieGrid() {
 
   const searchMovies = async () => {
     setLoading(true);
+    setError('');
     try {
       const response = await fetch(`${API_URL}/api/movies/search?query=${encodeURIComponent(searchQuery)}&page=${page}`);
       const data = await response.json();
-      setSearchResults(data.films);
-      setItems(data.films || []);
-      setTotalPages(data.totalPages || 1);
+      
+      if (data.films) {
+        setSearchResults(data.films);
+        setItems(data.films);
+        setTotalPages(data.totalPages || 1);
+      } else {
+        setItems([]);
+        setError('Aucun résultat');
+      }
     } catch (error) {
+      console.error('Erreur recherche:', error);
       setError('Erreur de recherche');
     } finally {
       setLoading(false);
@@ -121,11 +136,20 @@ function MovieGrid() {
 
   const fetchByGenre = async () => {
     setLoading(true);
+    setError('');
     try {
       const response = await fetch(`${API_URL}/api/movies/genre/${selectedGenre}?page=${page}`);
       const data = await response.json();
-      setItems(data.films || []);
+      
+      if (data.films) {
+        setItems(data.films);
+        setTotalPages(data.totalPages || 1);
+      } else {
+        setItems([]);
+        setError('Aucun film dans ce genre');
+      }
     } catch (error) {
+      console.error('Erreur genre:', error);
       setError('Erreur de chargement');
     } finally {
       setLoading(false);
@@ -174,6 +198,15 @@ function MovieGrid() {
     setSelectedGenre(genreId);
     setFilter(null);
     setPage(1);
+    setSearchQuery('');
+  };
+
+  const handleCategoryChange = (newCategory) => {
+    setCategory(newCategory);
+    setSelectedGenre(null);
+    setFilter('popular');
+    setSearchQuery('');
+    setPage(1);
   };
 
   // Lecteur
@@ -213,10 +246,10 @@ function MovieGrid() {
       <header className={`netflix-header ${scrolled ? 'scrolled' : ''}`}>
         <span className="netflix-logo">LeY Tv</span>
         <nav className="netflix-nav">
-          <a href="#" onClick={(e) => { e.preventDefault(); setCategory('movies'); setSelectedGenre(null); setFilter('popular'); }} className={category === 'movies' && !selectedGenre ? 'active' : ''}>Films</a>
-          <a href="#" onClick={(e) => { e.preventDefault(); setCategory('anime'); setSelectedGenre(null); }} className={category === 'anime' ? 'active' : ''}>Animes</a>
-          <a href="#" onClick={(e) => { e.preventDefault(); setCategory('dramas'); setSelectedGenre(null); }} className={category === 'dramas' ? 'active' : ''}>Dramas</a>
-          <a href="#" onClick={(e) => { e.preventDefault(); setCategory('arabic'); setSelectedGenre(null); }} className={category === 'arabic' ? 'active' : ''}>Arabes</a>
+          <a href="#" onClick={(e) => { e.preventDefault(); handleCategoryChange('movies'); }} className={category === 'movies' && !selectedGenre ? 'active' : ''}>Films</a>
+          <a href="#" onClick={(e) => { e.preventDefault(); handleCategoryChange('anime'); }} className={category === 'anime' ? 'active' : ''}>Animes</a>
+          <a href="#" onClick={(e) => { e.preventDefault(); handleCategoryChange('dramas'); }} className={category === 'dramas' ? 'active' : ''}>Dramas</a>
+          <a href="#" onClick={(e) => { e.preventDefault(); handleCategoryChange('arabic'); }} className={category === 'arabic' ? 'active' : ''}>Arabes</a>
         </nav>
       </header>
 
@@ -351,7 +384,7 @@ function MovieGrid() {
 
       {/* Navigation en bas */}
       <nav className="netflix-bottom-nav">
-        <a href="#" onClick={(e) => { e.preventDefault(); setSearchQuery(''); setSelectedGenre(null); setFilter('popular'); }} className="active">Accueil</a>
+        <a href="#" onClick={(e) => { e.preventDefault(); handleCategoryChange('movies'); }} className="active">Accueil</a>
         <a href="#" onClick={(e) => { e.preventDefault(); setFilter('upcoming'); }}>Tout nouveau</a>
         <a href="#">Mon Netflix</a>
       </nav>
