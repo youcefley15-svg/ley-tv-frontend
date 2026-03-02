@@ -1,25 +1,39 @@
-import React, { useEffect, useRef } from 'react';
-import Plyr from 'plyr';
+import React, { useEffect, useRef, useState } from 'react';
+// Importer Plyr correctement
+import Plyr from 'plyr/dist/plyr';
+import 'plyr/dist/plyr.css';
 
 const NetflixPlayer = ({ movie, onClose }) => {
   const playerRef = useRef(null);
   const plyrInstance = useRef(null);
+  const [currentLanguage, setCurrentLanguage] = useState('fr');
+  const [showControls, setShowControls] = useState(true);
+  const controlsTimeout = useRef(null);
 
-  // Liste des pistes audio disponibles
-  const audioTracks = [
-    { srclang: 'fr', label: 'Français', default: true },
-    { srclang: 'en', label: 'English' },
-    { srclang: 'ar', label: 'العربية' },
-    { srclang: 'ja', label: '日本語' },
-    { srclang: 'ko', label: '한국어' }
-  ];
+  // Liste des langues disponibles
+  const languages = {
+    'fr': { label: 'Français', flag: '🇫🇷' },
+    'en': { label: 'English', flag: '🇬🇧' },
+    'ar': { label: 'العربية', flag: '🇸🇦' },
+    'ja': { label: '日本語', flag: '🇯🇵' },
+    'ko': { label: '한국어', flag: '🇰🇷' },
+    'zh': { label: '中文', flag: '🇨🇳' },
+    'hi': { label: 'हिन्दी', flag: '🇮🇳' },
+    'de': { label: 'Deutsch', flag: '🇩🇪' },
+    'es': { label: 'Español', flag: '🇪🇸' },
+    'it': { label: 'Italiano', flag: '🇮🇹' },
+    'pt': { label: 'Português', flag: '🇵🇹' },
+    'ru': { label: 'Русский', flag: '🇷🇺' }
+  };
 
   useEffect(() => {
-    // Sauvegarder la position actuelle toutes les 5 secondes
+    // Sauvegarder la position toutes les 5 secondes
     const saveInterval = setInterval(() => {
       if (plyrInstance.current) {
         const currentTime = plyrInstance.current.currentTime;
-        localStorage.setItem(`movie-${movie.id}-position`, currentTime.toString());
+        if (currentTime > 0) {
+          localStorage.setItem(`movie-${movie.id}-position`, currentTime.toString());
+        }
       }
     }, 5000);
 
@@ -34,20 +48,20 @@ const NetflixPlayer = ({ movie, onClose }) => {
       // Initialiser Plyr avec toutes les options
       plyrInstance.current = new Plyr(playerRef.current, {
         controls: [
-          'play-large',    // Gros bouton play au milieu
-          'restart',       // Recommencer
-          'rewind',        // Reculer de 10s
-          'play',          // Play/pause
-          'fast-forward',  // Avancer de 10s
-          'progress',      // Barre de progression
-          'current-time',  // Temps actuel
-          'duration',      // Durée totale
-          'mute',          // Muet
-          'volume',        // Volume
-          'settings',      // Paramètres (audio, sous-titres, vitesse)
-          'pip',           // Picture-in-picture
-          'airplay',       // AirPlay
-          'fullscreen'     // Plein écran
+          'play-large',
+          'restart',
+          'rewind',
+          'play',
+          'fast-forward',
+          'progress',
+          'current-time',
+          'duration',
+          'mute',
+          'volume',
+          'settings',
+          'pip',
+          'airplay',
+          'fullscreen'
         ],
         settings: ['captions', 'quality', 'speed', 'loop'],
         i18n: {
@@ -57,7 +71,7 @@ const NetflixPlayer = ({ movie, onClose }) => {
           pause: 'Pause',
           fastForward: 'Avancer de 10s',
           seek: 'Chercher',
-          seekLabel: '{currentTime} sur {duration}',
+          seekLabel: '{currentTime} / {duration}',
           played: 'Lecture en cours',
           buffered: 'Tampon',
           currentTime: 'Temps actuel',
@@ -70,7 +84,7 @@ const NetflixPlayer = ({ movie, onClose }) => {
           download: 'Télécharger',
           enterFullscreen: 'Plein écran',
           exitFullscreen: 'Quitter le plein écran',
-          frameTitle: 'Lecteur pour {title}',
+          frameTitle: 'Lecteur - {title}',
           captions: 'Sous-titres',
           settings: 'Paramètres',
           menuBack: 'Retour',
@@ -87,10 +101,6 @@ const NetflixPlayer = ({ movie, onClose }) => {
           controls: true,
           seek: true
         },
-        duration: 0,
-        displayDuration: true,
-        invertTime: false,
-        toggleInvert: true,
         storage: {
           enabled: true,
           key: 'plyr'
@@ -108,6 +118,28 @@ const NetflixPlayer = ({ movie, onClose }) => {
       plyrInstance.current.on('ended', () => {
         localStorage.removeItem(`movie-${movie.id}-position`);
       });
+
+      // Gérer l'affichage des contrôles
+      const handleMouseMove = () => {
+        setShowControls(true);
+        if (controlsTimeout.current) {
+          clearTimeout(controlsTimeout.current);
+        }
+        controlsTimeout.current = setTimeout(() => {
+          if (plyrInstance.current?.playing) {
+            setShowControls(false);
+          }
+        }, 3000);
+      };
+
+      document.addEventListener('mousemove', handleMouseMove);
+      
+      return () => {
+        document.removeEventListener('mousemove', handleMouseMove);
+        if (controlsTimeout.current) {
+          clearTimeout(controlsTimeout.current);
+        }
+      };
     }
 
     return () => {
@@ -117,17 +149,10 @@ const NetflixPlayer = ({ movie, onClose }) => {
     };
   }, [movie.id]);
 
-  // Générer les sources avec plusieurs pistes audio
-  const generateSources = () => {
-    const sources = [];
-    
-    // Vidéo principale (avec toutes les pistes audio)
-    sources.push({
-      src: `https://vidsrc.xyz/embed/movie/${movie.id}`,
-      type: 'video/mp4'
-    });
-
-    return sources;
+  const changeLanguage = (lang) => {
+    setCurrentLanguage(lang);
+    // Ici, on changerait la source vidéo ou la piste audio
+    console.log(`Langue changée pour: ${languages[lang].label}`);
   };
 
   return (
@@ -138,9 +163,7 @@ const NetflixPlayer = ({ movie, onClose }) => {
       right: 0,
       bottom: 0,
       backgroundColor: '#000',
-      zIndex: 2000,
-      display: 'flex',
-      flexDirection: 'column'
+      zIndex: 2000
     }}>
       {/* Barre de contrôle supérieure */}
       <div style={{
@@ -149,12 +172,13 @@ const NetflixPlayer = ({ movie, onClose }) => {
         left: 0,
         right: 0,
         height: '70px',
-        background: 'linear-gradient(180deg, rgba(0,0,0,0.7) 0%, transparent)',
+        background: showControls ? 'linear-gradient(180deg, rgba(0,0,0,0.7) 0%, transparent)' : 'transparent',
         zIndex: 10,
         display: 'flex',
         alignItems: 'center',
         padding: '0 20px',
-        pointerEvents: 'none'
+        transition: 'background 0.3s',
+        pointerEvents: showControls ? 'auto' : 'none'
       }}>
         <button
           onClick={onClose}
@@ -164,10 +188,10 @@ const NetflixPlayer = ({ movie, onClose }) => {
             color: 'white',
             fontSize: '1.5rem',
             cursor: 'pointer',
-            pointerEvents: 'auto',
             padding: '10px',
             borderRadius: '50%',
-            transition: 'background 0.3s'
+            transition: 'all 0.3s',
+            opacity: showControls ? 1 : 0
           }}
           onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.2)'}
           onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
@@ -179,10 +203,42 @@ const NetflixPlayer = ({ movie, onClose }) => {
           fontSize: '1.2rem',
           fontWeight: 'bold',
           marginLeft: '10px',
-          pointerEvents: 'auto'
+          opacity: showControls ? 1 : 0,
+          transition: 'opacity 0.3s'
         }}>
           {movie.title}
         </span>
+      </div>
+
+      {/* Sélecteur de langue (apparaît au survol) */}
+      <div style={{
+        position: 'absolute',
+        top: '80px',
+        right: '20px',
+        zIndex: 20,
+        opacity: showControls ? 1 : 0,
+        transition: 'opacity 0.3s',
+        pointerEvents: showControls ? 'auto' : 'none'
+      }}>
+        <select
+          value={currentLanguage}
+          onChange={(e) => changeLanguage(e.target.value)}
+          style={{
+            padding: '10px 15px',
+            background: 'rgba(0,0,0,0.8)',
+            color: 'white',
+            border: '1px solid #333',
+            borderRadius: '4px',
+            cursor: 'pointer',
+            fontSize: '0.9rem'
+          }}
+        >
+          {Object.entries(languages).map(([code, { flag, label }]) => (
+            <option key={code} value={code}>
+              {flag} {label}
+            </option>
+          ))}
+        </select>
       </div>
 
       {/* Lecteur Plyr */}
@@ -193,24 +249,12 @@ const NetflixPlayer = ({ movie, onClose }) => {
         crossOrigin="anonymous"
         playsInline
       >
-        {/* Sources vidéo */}
+        {/* Source vidéo principale */}
         <source src={`https://vidsrc.xyz/embed/movie/${movie.id}`} type="video/mp4" />
-
-        {/* Pistes audio (pour les vraies vidéos avec plusieurs pistes) */}
-        {audioTracks.map((track, index) => (
-          <track
-            key={index}
-            kind="subtitles"
-            label={track.label}
-            srcLang={track.srclang}
-            src={`/api/subtitles/${movie.id}/${track.srclang}`}
-            default={track.default}
-          />
-        ))}
       </video>
 
-      {/* Style personnalisé pour Plyr */}
-      <style jsx>{`
+      {/* Style personnalisé */}
+      <style>{`
         .plyr {
           width: 100%;
           height: 100%;
@@ -224,6 +268,13 @@ const NetflixPlayer = ({ movie, onClose }) => {
         .plyr__control--overlaid:hover {
           background: #f40612;
         }
+        .plyr__control--overlaid svg {
+          width: 24px;
+          height: 24px;
+        }
+        .plyr__controls {
+          background: linear-gradient(0deg, rgba(0,0,0,0.7) 0%, transparent);
+        }
         .plyr__menu__container .plyr__control[role="menuitemradio"][aria-checked="true"]::before {
           background: #e50914;
         }
@@ -232,6 +283,18 @@ const NetflixPlayer = ({ movie, onClose }) => {
         }
         .plyr__menu__container .plyr__control[role="menuitemradio"][aria-checked="true"]:hover {
           background: #e50914;
+        }
+        .plyr__progress__buffer {
+          background: rgba(255,255,255,0.3);
+        }
+        .plyr__progress__buffer::-webkit-progress-bar {
+          background: rgba(255,255,255,0.3);
+        }
+        .plyr__progress__buffer::-webkit-progress-value {
+          background: #fff;
+        }
+        .plyr__progress__buffer::-moz-progress-bar {
+          background: #fff;
         }
       `}</style>
     </div>
