@@ -1,7 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
-// Correction du chemin d'importation Plyr
+// Importer Plyr correctement
 import Plyr from 'plyr';
-import 'plyr/dist/plyr.css';
 
 const NetflixPlayer = ({ movie, onClose }) => {
   const playerRef = useRef(null);
@@ -25,6 +24,18 @@ const NetflixPlayer = ({ movie, onClose }) => {
     'pt': { label: 'Português', flag: '🇵🇹' },
     'ru': { label: 'Русский', flag: '🇷🇺' }
   };
+
+  // Ajouter le CSS Plyr directement dans le head
+  useEffect(() => {
+    const link = document.createElement('link');
+    link.rel = 'stylesheet';
+    link.href = 'https://cdn.plyr.io/3.7.8/plyr.css';
+    document.head.appendChild(link);
+    
+    return () => {
+      document.head.removeChild(link);
+    };
+  }, []);
 
   useEffect(() => {
     // Sauvegarder la position toutes les 5 secondes
@@ -151,7 +162,6 @@ const NetflixPlayer = ({ movie, onClose }) => {
 
   const changeLanguage = (lang) => {
     setCurrentLanguage(lang);
-    // Ici, on changerait la source vidéo ou la piste audio
     console.log(`Langue changée pour: ${languages[lang].label}`);
   };
 
@@ -249,7 +259,6 @@ const NetflixPlayer = ({ movie, onClose }) => {
         crossOrigin="anonymous"
         playsInline
       >
-        {/* Source vidéo principale */}
         <source src={`https://vidsrc.xyz/embed/movie/${movie.id}`} type="video/mp4" />
       </video>
 
